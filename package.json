@@ -1,0 +1,26 @@
+{
+  "name": "beeman-ops",
+  "private": true,
+  "packageManager": "yarn@4.12.0",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "dev:api": "yarn workspace @ops/api dev",
+    "dev:web": "yarn workspace @ops/web dev",
+    "dev:agent": "yarn workspace @ops/agent dev",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down",
+    "db:push": "yarn workspace @ops/db prisma db push",
+    "db:studio": "yarn workspace @ops/db prisma studio",
+    "prisma": "prisma",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck"
+  },
+  "devDependencies": {
+    "turbo": "^2.2.3",
+    "typescript": "^5.5.4"
+  }
+}

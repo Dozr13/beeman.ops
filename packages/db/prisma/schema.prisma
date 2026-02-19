@@ -1,0 +1,153 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum SiteType {
+  UNKNOWN
+  WELL
+  PAD
+  FACILITY
+  YARD
+}
+
+enum Severity {
+  INFO
+  WARN
+  HIGH
+  CRITICAL
+}
+
+model Site {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String?
+  type      SiteType @default(UNKNOWN)
+  timezone  String   @default("America/Denver")
+  meta      Json?
+  ingestKey String?
+  hutCode   String?
+
+  createdAt DateTime @default(now())
+
+  devices        Device[]
+  heartbeats     Heartbeat[]
+  alerts         Alert[]
+  hutAssignments HutAssignment[]
+}
+
+model Device {
+  id         String   @id @default(cuid())
+  siteId     String
+  externalId String // stable ID from agent (e.g., miner IP, modbus unit, etc.)
+  kind       String
+  name       String?
+  meta       Json?
+  createdAt  DateTime @default(now())
+
+  site    Site     @relation(fields: [siteId], references: [id])
+  metrics Metric[]
+  alerts  Alert[]
+
+  // NEW: latest snapshot per device
+  status DeviceStatus?
+
+  // NEW: hourly rollups for graphs
+  metricHours MetricHour[]
+
+  @@unique([siteId, externalId])
+  @@index([siteId, kind])
+}
+
+model Metric {
+  id       String   @id @default(cuid())
+  deviceId String
+  ts       DateTime
+  payload  Json
+
+  device Device @relation(fields: [deviceId], references: [id])
+
+  @@index([deviceId, ts])
+}
+
+// NEW: one row per device, always latest
+model DeviceStatus {
+  deviceId String   @id
+  ts       DateTime
+  payload  Json
+
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@index([ts])
+}
+
+// NEW: hourly rollup row per device per hour
+model MetricHour {
+  id       String   @id @default(cuid())
+  deviceId String
+  hour     DateTime
+  payload  Json
+
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@unique([deviceId, hour])
+  @@index([hour])
+  @@index([deviceId, hour])
+}
+
+model Heartbeat {
+  id      String   @id @default(cuid())
+  siteId  String
+  agentId String
+  ts      DateTime
+  meta    Json?
+
+  site Site @relation(fields: [siteId], references: [id])
+
+  @@index([siteId, ts])
+}
+
+model Alert {
+  id         String    @id @default(cuid())
+  siteId     String
+  deviceId   String?
+  severity   Severity
+  code       String
+  message    String
+  details    Json?
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+
+  site   Site    @relation(fields: [siteId], references: [id])
+  device Device? @relation(fields: [deviceId], references: [id])
+
+  @@index([siteId, createdAt])
+  @@index([severity, createdAt])
+}
+
+model Hut {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String?
+  meta      Json?
+  createdAt DateTime @default(now())
+
+  assignments HutAssignment[]
+}
+
+model HutAssignment {
+  id       String    @id @default(cuid())
+  hutId    String
+  siteId   String
+  startsAt DateTime  @default(now())
+  endsAt   DateTime?
+
+  hut  Hut  @relation(fields: [hutId], references: [id], onDelete: Cascade)
+  site Site @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([hutId, endsAt])
+  @@index([siteId, endsAt])
+}

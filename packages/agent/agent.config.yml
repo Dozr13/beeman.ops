@@ -1,0 +1,169 @@
+siteCode: 40.609484,-107.911308
+siteType: PAD # or WELL/FACILITY/YARD/UNKNOWN
+agentId: bulldog-26
+
+api:
+  url: http://localhost:3002
+  ingestKey: dev-secret-change-me
+
+intervalSeconds: 300
+
+collectors:
+  hut:
+    enabled: true
+
+    miners:
+      enabled: true
+
+      targets:
+        - name: A01
+          host: 192.168.1.101
+          port: 4028
+        - name: A02
+          host: 192.168.1.102
+          port: 4028
+        - name: A03
+          host: 192.168.1.103
+          port: 4028
+        - name: A04
+          host: 192.168.1.104
+          port: 4028
+        - name: A05
+          host: 192.168.1.105
+          port: 4028
+        - name: A06
+          host: 192.168.1.106
+          port: 4028
+        - name: A07
+          host: 192.168.1.107
+          port: 4028
+        - name: A08
+          host: 192.168.1.108
+          port: 4028
+        - name: A09
+          host: 192.168.1.109
+          port: 4028
+        - name: A10
+          host: 192.168.1.110
+          port: 4028
+        - name: A11
+          host: 192.168.1.128
+          port: 4028
+        - name: A12
+          host: 192.168.1.133
+          port: 4028
+        - name: A13
+          host: 192.168.1.135
+          port: 4028
+        - name: A14
+          host: 192.168.1.136
+          port: 4028
+        - name: A15
+          host: 192.168.1.150
+          port: 4028
+        - name: A16
+          host: 192.168.1.151
+          port: 4028
+        - name: A17
+          host: 192.168.1.153
+          port: 4028
+        - name: A18
+          host: 192.168.1.156
+          port: 4028
+        - name: A19
+          host: 192.168.1.161
+          port: 4028
+        - name: A20
+          host: 192.168.1.166
+          port: 4028
+        - name: A21
+          host: 192.168.1.170
+          port: 4028
+        - name: A22
+          host: 192.168.1.172
+          port: 4028
+        - name: A23
+          host: 192.168.1.173
+          port: 4028
+        - name: A24
+          host: 192.168.1.176
+          port: 4028
+        - name: A25
+          host: 192.168.1.181
+          port: 4028
+        - name: A26
+          host: 192.168.1.182
+          port: 4028
+        - name: A27
+          host: 192.168.1.190
+          port: 4028
+        - name: A28
+          host: 192.168.1.197
+          port: 4028
+        - name: A29
+          host: 192.168.1.198
+          port: 4028
+        - name: A30
+          host: 192.168.1.200
+          port: 4028
+        - name: A31
+          host: 192.168.1.203
+          port: 4028
+        - name: A32
+          host: 192.168.1.204
+          port: 4028
+        - name: A33
+          host: 192.168.1.207
+          port: 4028
+        - name: A34
+          host: 192.168.1.209
+          port: 4028
+        - name: A35
+          host: 192.168.1.212
+          port: 4028
+        - name: A36
+          host: 192.168.1.217
+          port: 4028
+        - name: A37
+          host: 192.168.1.221
+          port: 4028
+        - name: A38
+          host: 192.168.1.224
+          port: 4028
+        - name: A39
+          host: 192.168.1.225
+          port: 4028
+        - name: A40
+          host: 192.168.1.226
+          port: 4028
+        - name: A41
+          host: 192.168.1.229
+          port: 4028
+        - name: A42
+          host: 192.168.1.232
+          port: 4028
+        - name: A43
+          host: 192.168.1.233
+          port: 4028
+        - name: A44
+          host: 192.168.1.237
+          port: 4028
+        - name: A45
+          host: 192.168.1.239
+          port: 4028
+        - name: A46
+          host: 192.168.1.240
+          port: 4028
+        - name: A47
+          host: 192.168.1.241
+          port: 4028
+        - name: A48
+          host: 192.168.1.242
+          port: 4028
+
+      mockMiners:
+        enabled: false
+        count: 48
+
+well:
+  enabled: false

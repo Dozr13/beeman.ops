@@ -1,0 +1,23 @@
+{
+  "name": "@ops/agent",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "echo \"(wire eslint if you want)\""
+  },
+  "dependencies": {
+    "@ops/shared": "workspace:*",
+    "better-sqlite3": "^11.7.0",
+    "dotenv": "^17.3.1",
+    "js-yaml": "^4.1.0",
+    "p-limit": "^6.2.0"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/js-yaml": "^4.0.9",
+    "tsx": "^4.19.2",
+    "typescript": "^5.5.4"
+  }
+}

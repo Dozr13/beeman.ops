@@ -1,0 +1,375 @@
+'use client'
+
+import type { MinerRecord, UnitMode } from '@/lib/hut/types'
+import {
+  bestHashRaw,
+  classify,
+  formatInt,
+  formatTH,
+  rawToTH
+} from '@/lib/hut/types'
+import { Badge, Button, Card, CardBody, Input } from '@/lib/hut/ui'
+import { ArrowDownUp } from 'lucide-react'
+import React, { useMemo, useState } from 'react'
+
+type Row = {
+  m: MinerRecord
+  th: number | null
+  bucket: 'OK' | 'WARN' | 'CRIT'
+  replace: boolean
+  investigate: boolean
+  tags: string[]
+  ageSec: number | null
+}
+
+const toneFor = (bucket: Row['bucket']) =>
+  bucket === 'CRIT' ? 'crit' : bucket === 'WARN' ? 'warn' : 'ok'
+
+export const MinerTable: React.FC<{
+  miners: MinerRecord[]
+  unitMode: UnitMode
+  filter: 'ALL' | 'CRIT' | 'WARN' | 'OK'
+  onFilter: (f: 'ALL' | 'CRIT' | 'WARN' | 'OK') => void
+}> = ({ miners, unitMode, filter, onFilter }) => {
+  const [search, setSearch] = useState('')
+  const [sortBy, setSortBy] = useState<'th' | 'ip' | 'power' | 'bucket'>(
+    'bucket'
+  )
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
+
+  const rows = useMemo<Row[]>(() => {
+    const now = Date.now()
+
+    // TEMP DEBUG — remove after fix
+    const ips = miners.map((m) => m.ip)
+    const dupes = ips.filter((ip, i) => ips.indexOf(ip) !== i)
+    if (dupes.length) {
+      console.warn('DUPLICATE MINER IPs:', Array.from(new Set(dupes)))
+      console.warn(
+        'IP counts:',
+        ips.reduce<Record<string, number>>((acc, ip) => {
+          acc[ip] = (acc[ip] ?? 0) + 1
+          return acc
+        }, {})
+      )
+    }
+
+    return miners.map((m) => {
+      const raw = bestHashRaw(m)
+      const th = typeof raw === 'number' ? rawToTH(raw, unitMode) : null
+      const c = classify(m, th)
+
+      const ageSec =
+        m.ts != null
+          ? Math.max(0, Math.floor((now - new Date(m.ts).getTime()) / 1000))
+          : null
+
+      return {
+        m,
+        th,
+        bucket: c.bucket,
+        replace: c.replace,
+        investigate: c.investigate,
+        tags: c.errs,
+        ageSec
+      }
+    })
+  }, [miners, unitMode])
+
+  const counts = useMemo(() => {
+    const c = { ALL: rows.length, CRIT: 0, WARN: 0, OK: 0 } as const as any
+    for (const r of rows) c[r.bucket]++
+    return c as { ALL: number; CRIT: number; WARN: number; OK: number }
+  }, [rows])
+
+  const visible = useMemo(() => {
+    const s = search.trim().toLowerCase()
+    let r = rows
+
+    if (filter !== 'ALL') r = r.filter((x) => x.bucket === filter)
+
+    if (s) {
+      r = r.filter((x) => {
+        const blob =
+          `${x.m.ip} ${x.m.loc ?? ''} ${x.m.pool_user ?? ''} ${x.m.pool_status ?? ''} ${(x.m.errors ?? []).join(' ')}`.toLowerCase()
+        return blob.includes(s)
+      })
+    }
+
+    const dir = sortDir === 'asc' ? 1 : -1
+
+    r = [...r].sort((a, b) => {
+      if (sortBy === 'ip')
+        return dir * a.m.ip.localeCompare(b.m.ip, undefined, { numeric: true })
+
+      if (sortBy === 'power')
+        return dir * ((a.m.power_w ?? -1) - (b.m.power_w ?? -1))
+
+      if (sortBy === 'bucket') {
+        const sev = (x: Row['bucket']) =>
+          x === 'CRIT' ? 3 : x === 'WARN' ? 2 : 1
+
+        // Custom order: CRIT > WARN > OK
+        // desc should put CRIT first, so compare B - A (reverse) then apply dir.
+        return dir * (sev(b.bucket) - sev(a.bucket))
+      }
+
+      return dir * ((a.th ?? -1) - (b.th ?? -1))
+    })
+
+    return r
+  }, [rows, filter, search, sortBy, sortDir])
+
+  const toggleSort = (k: typeof sortBy) => {
+    if (sortBy === k) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    else {
+      setSortBy(k)
+      setSortDir('desc')
+    }
+  }
+
+  return (
+    <Card>
+      <CardBody className='space-y-4'>
+        <div className='flex flex-wrap items-center gap-3'>
+          <div className='flex gap-2'>
+            {(['ALL', 'CRIT', 'WARN', 'OK'] as const).map((k) => (
+              <button
+                key={k}
+                onClick={() => onFilter(k)}
+                className={[
+                  'rounded-full border px-3 py-1.5 text-sm font-medium transition',
+                  filter === k
+                    ? 'border-zinc-600 bg-zinc-800 text-zinc-100'
+                    : 'border-zinc-800 bg-zinc-950/40 text-zinc-300 hover:bg-zinc-900/50'
+                ].join(' ')}
+              >
+                {k}{' '}
+                <span className='ml-1 text-xs text-zinc-500'>
+                  ({counts[k]})
+                </span>
+              </button>
+            ))}
+          </div>
+
+          <div className='ml-auto w-full sm:w-96'>
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder='Search IP / worker / errors…'
+            />
+          </div>
+        </div>
+
+        <div className='overflow-hidden rounded-xl border border-zinc-800'>
+          <div className='overflow-x-auto'>
+            <table className='min-w-full text-sm'>
+              <thead className='sticky top-0 z-10 bg-zinc-900/80 backdrop-blur border-b border-zinc-800'>
+                <tr className='text-left text-zinc-300'>
+                  <th className='px-4 py-3'>
+                    <div className='flex items-center gap-2'>Loc</div>
+                  </th>
+
+                  <th className='px-4 py-3'>
+                    <div className='flex items-center gap-2'>
+                      IP
+                      <Button
+                        variant='ghost'
+                        className='px-2 py-1'
+                        onClick={() => toggleSort('ip')}
+                      >
+                        <ArrowDownUp className='h-4 w-4' />
+                      </Button>
+                    </div>
+                  </th>
+
+                  <th className='px-4 py-3'>
+                    <div className='flex items-center gap-2'>
+                      Status
+                      <Button
+                        variant='ghost'
+                        className='px-2 py-1'
+                        onClick={() => toggleSort('bucket')}
+                      >
+                        <ArrowDownUp className='h-4 w-4' />
+                      </Button>
+                    </div>
+                  </th>
+
+                  <th className='px-4 py-3 text-right'>
+                    <div className='flex items-center justify-end gap-2'>
+                      Hash (TH)
+                      <Button
+                        variant='ghost'
+                        className='px-2 py-1'
+                        onClick={() => toggleSort('th')}
+                      >
+                        <ArrowDownUp className='h-4 w-4' />
+                      </Button>
+                    </div>
+                  </th>
+
+                  <th className='px-4 py-3 text-right'>
+                    <div className='flex items-center justify-end gap-2'>
+                      Power (W)
+                      <Button
+                        variant='ghost'
+                        className='px-2 py-1'
+                        onClick={() => toggleSort('power')}
+                      >
+                        <ArrowDownUp className='h-4 w-4' />
+                      </Button>
+                    </div>
+                  </th>
+
+                  <th className='px-4 py-3'>Pool</th>
+                  <th className='px-4 py-3'>Flags</th>
+                  <th className='px-4 py-3'>Errors</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {visible.map((r) => {
+                  const m = r.m
+                  const tone = toneFor(r.bucket)
+                  const ageSec = r.ageSec
+                  const stale = ageSec != null && ageSec > 90
+
+                  return (
+                    <tr
+                      key={m.ip}
+                      className='border-b border-zinc-900/80 hover:bg-zinc-900/30'
+                    >
+                      <td className='px-4 py-3'>
+                        {m.loc ? (
+                          <span className='rounded-full border border-zinc-800 bg-zinc-950/40 px-2.5 py-1 text-xs font-mono text-zinc-200'>
+                            {m.loc}
+                          </span>
+                        ) : (
+                          <span className='text-xs text-zinc-600'>—</span>
+                        )}
+                      </td>
+
+                      <td className='px-4 py-3 font-mono text-zinc-200'>
+                        <a
+                          href={`http://${encodeURIComponent(m.ip)}/`}
+                          target='_blank'
+                          rel='noreferrer'
+                          className='underline decoration-zinc-700 hover:decoration-zinc-300'
+                          title='Open miner UI'
+                        >
+                          {m.ip}
+                        </a>
+                      </td>
+
+                      <td className='px-4 py-3'>
+                        <div className='flex flex-wrap items-center gap-2'>
+                          <Badge tone={tone}>{r.bucket}</Badge>
+
+                          {r.replace ? (
+                            <Badge tone='crit'>REPLACE</Badge>
+                          ) : null}
+                          {r.investigate ? (
+                            <Badge tone='warn'>CHECK</Badge>
+                          ) : null}
+
+                          {m.api_4028 ? (
+                            <Badge tone='muted'>API</Badge>
+                          ) : m.reachable ? (
+                            <Badge tone='muted'>WEB</Badge>
+                          ) : (
+                            <Badge tone='crit'>DOWN</Badge>
+                          )}
+
+                          {ageSec != null ? (
+                            <span
+                              className='text-xs text-zinc-500'
+                              title={m.ts ?? undefined}
+                            >
+                              {ageSec}s
+                            </span>
+                          ) : null}
+                        </div>
+                      </td>
+
+                      <td className='px-4 py-3 text-right font-mono'>
+                        {formatTH(r.th)}
+                      </td>
+
+                      <td className='px-4 py-3 text-right font-mono'>
+                        {formatInt(m.power_w ?? null)}
+                      </td>
+
+                      <td className='px-4 py-3'>
+                        <div className='text-zinc-200'>
+                          {m.pool_status ?? (m.api_4028 ? '?' : 'no API')}
+                        </div>
+                        <div className='text-xs text-zinc-500 truncate max-w-[34rem]'>
+                          {m.pool_user ?? ''}
+                        </div>
+                      </td>
+
+                      <td className='px-4 py-3'>
+                        <div className='flex flex-wrap gap-2'>
+                          {ageSec == null ? (
+                            <Badge tone='warn'>NO TS</Badge>
+                          ) : stale ? (
+                            <Badge tone='warn'>STALE {ageSec}s</Badge>
+                          ) : (
+                            <Badge tone='muted'>{ageSec}s</Badge>
+                          )}
+
+                          {!m.reachable ? (
+                            <Badge tone='crit'>UNREACHABLE</Badge>
+                          ) : null}
+
+                          {m.reachable && !m.api_4028 ? (
+                            <Badge tone='warn'>API DOWN</Badge>
+                          ) : null}
+
+                          {m.api_4028 && (r.th == null || r.th < 0.5) ? (
+                            <Badge tone='crit'>NOT HASHING</Badge>
+                          ) : null}
+                        </div>
+                      </td>
+
+                      <td className='px-4 py-3'>
+                        <div className='flex flex-wrap gap-2'>
+                          {(r.tags.length ? r.tags : (m.errors ?? []))
+                            .slice(0, 8)
+                            .map((e, i) => (
+                              <span
+                                key={`${e}-${i}`}
+                                className='rounded-full border border-zinc-800 bg-zinc-950/40 px-2.5 py-1 text-xs text-zinc-300'
+                              >
+                                {e}
+                              </span>
+                            ))}
+
+                          {!r.tags.length && !(m.errors ?? []).length ? (
+                            <span className='text-xs text-zinc-600'>—</span>
+                          ) : null}
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+
+                {!visible.length ? (
+                  <tr>
+                    <td
+                      className='px-4 py-10 text-center text-zinc-500'
+                      colSpan={8}
+                    >
+                      No rows match filters/search.
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </CardBody>
+    </Card>
+  )
+}

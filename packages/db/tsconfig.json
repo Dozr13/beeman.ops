@@ -1,0 +1,9 @@
+{
+  "extends": "../shared/tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext"
+  },
+  "include": ["src/**/*.ts", "prisma.config.ts"]
+}
