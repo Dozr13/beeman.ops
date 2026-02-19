@@ -1,11 +1,12 @@
 // packages/api/src/routes/sites.ts
+import { SiteType } from '@ops/shared'
 import type { FastifyPluginAsync } from 'fastify'
 
 type SiteCreateBody = {
   code: string
   name?: string | null
   // UPDATED: Site type now represents LOCATION kind (not hut vs well)
-  type?: 'UNKNOWN' | 'WELL' | 'PAD' | 'FACILITY' | 'YARD'
+  type?: SiteType
   timezone?: string
   hutCode?: string | null
   meta?: any

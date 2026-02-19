@@ -1,0 +1,96 @@
+name: Deploy Web to Vercel (prebuilt)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/web/**'
+      - 'packages/shared/**'
+      - 'yarn.lock'
+      - '.yarnrc.yml'
+      - 'package.json'
+      - 'turbo.json'
+      - 'tsconfig*.json'
+
+concurrency:
+  group: vercel-web-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      # baked into Next.js at build time (required)
+      NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL }}
+      OPS_API_BASE: ${{ secrets.OPS_API_BASE }}
+
+      # if you use next-auth in prod
+      NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+      NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+
+      NODE_OPTIONS: --max_old_space_size=4096
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # IMPORTANT: do NOT enable setup-node yarn caching (it runs yarn v1)
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Enable Corepack + Yarn 4.12.0
+        shell: bash
+        run: |
+          set -euo pipefail
+          corepack enable
+          corepack prepare yarn@4.12.0 --activate
+          yarn -v
+
+      # Optional cache for Yarn Berry artifacts (safe, doesn't call yarn v1)
+      - name: Cache Yarn
+        uses: actions/cache@v4
+        with:
+          path: |
+            .yarn/cache
+            .yarn/unplugged
+            .yarn/install-state.gz
+          key: yarn-${{ runner.os }}-${{ hashFiles('yarn.lock') }}
+          restore-keys: |
+            yarn-${{ runner.os }}-
+
+      - name: Install deps
+        shell: bash
+        run: |
+          set -euo pipefail
+          yarn install
+
+      - name: Build shared (if needed by web)
+        shell: bash
+        run: |
+          set -euo pipefail
+          yarn workspace @ops/shared build
+
+      - name: Vercel pull (link project in CI)
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx vercel@latest pull --yes --environment=production --token="$VERCEL_TOKEN" --cwd packages/web
+
+      - name: Vercel build (prebuilt)
+        shell: bash
+        run: |
+          set -euo pipefail
+          export NEXT_PUBLIC_API_URL OPS_API_BASE NEXTAUTH_URL NEXTAUTH_SECRET
+          npx vercel@latest build --prod --token="$VERCEL_TOKEN" --cwd packages/web
+
+      - name: Vercel deploy (prebuilt)
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx vercel@latest deploy --prebuilt --prod --token="$VERCEL_TOKEN" --cwd packages/web

@@ -1,4 +1,4 @@
-import { isOnline } from '@ops/shared'
+import { isOnline, SiteDto } from '@ops/shared'
 import Link from 'next/link'
 import { apiGet } from '../../../components/api'
 import {
@@ -9,144 +9,118 @@ import {
   Pill
 } from '../../../components/ui'
 
-type Site = {
-  id: string
-  code: string
-  name: string | null
-  type: string | null
-  timezone: string
-  meta: any
-  createdAt: string
-  lastHeartbeat: string | null
-  currentHut: { id: string; code: string; name: string | null } | null
-}
+const fmt = (iso: string | null) => (iso ? new Date(iso).toLocaleString() : '—')
 
-type Device = {
-  id: string
-  siteId: string
-  externalId: string
-  kind: string
-  name: string | null
-  meta: any
-  createdAt: string
-}
-
-type Props = {
+export default async function SitePage({
+  params
+}: {
   params: Promise<{ siteId: string }>
-}
-
-export default async function SiteDetailPage({ params }: Props) {
+}) {
   const { siteId } = await params
 
-  const site = await apiGet<Site>(`/v1/sites/${siteId}`)
-  const devices = await apiGet<Device[]>(`/v1/sites/${siteId}/devices`)
+  const site = await apiGet<SiteDto>(`/v1/sites/${siteId}`)
 
-  const online = isOnline(site.lastHeartbeat)
-  const hutCode = site.currentHut?.code ?? null
+  const pingOnline = isOnline(site.lastHeartbeat)
+  const hutPingOnline = site.currentHut?.lastHeartbeat
+    ? isOnline(site.currentHut.lastHeartbeat)
+    : null
 
   return (
-    <div className='mx-auto w-full max-w-5xl space-y-6'>
-      <div className='flex flex-col gap-4 md:flex-row md:items-start md:justify-between'>
-        <div className='min-w-0'>
-          <div className='flex flex-wrap items-center gap-3'>
-            <h1 className='text-2xl font-semibold tracking-tight'>
+    <div className='px-6 py-6 md:px-10'>
+      <div className='mx-auto w-full max-w-4xl space-y-6'>
+        <div className='flex flex-col gap-3'>
+          <div className='flex flex-wrap items-center gap-2'>
+            <h1 className='text-3xl font-semibold tracking-tight'>
               {site.name ?? site.code}
             </h1>
-            <Pill tone={online ? 'good' : 'bad'}>
-              {online ? 'ONLINE' : 'OFFLINE'}
+
+            {/* SITE pill = coming soon */}
+            <Pill tone='neutral'>COMING SOON</Pill>
+
+            {/* Ping health pill */}
+            <Pill tone={pingOnline ? 'good' : 'bad'}>
+              PING {pingOnline ? 'OK' : 'DOWN'}
             </Pill>
           </div>
 
-          <div className='mt-1 text-sm text-zinc-400'>
-            {site.type ?? 'UNKNOWN'} • {site.timezone}
-          </div>
-
-          <div className='mt-2 text-xs text-zinc-500'>
-            Last heartbeat:{' '}
-            {site.lastHeartbeat
-              ? new Date(site.lastHeartbeat).toLocaleString()
-              : 'never'}
-          </div>
-        </div>
-
-        <div className='flex flex-wrap gap-2 md:justify-end'>
-          <Link
-            href={`/sites/${siteId}/edit`}
-            className='inline-flex items-center justify-center rounded-xl border border-zinc-800 bg-zinc-950/40 px-3 py-2 text-sm font-medium transition hover:bg-zinc-900/50 hover:border-zinc-700'
-          >
-            Edit Site →
-          </Link>
-
-          {hutCode ? (
-            <Link
-              href={`/huts/${encodeURIComponent(hutCode)}`}
-              className='inline-flex items-center justify-center rounded-xl border border-zinc-800 bg-zinc-950/40 px-3 py-2 text-sm font-medium transition hover:bg-zinc-900/50 hover:border-zinc-700'
-            >
-              Open Hut Dashboard →
-            </Link>
-          ) : (
-            <div className='flex items-center rounded-xl border border-zinc-900 bg-zinc-950/20 px-3 py-2 text-xs text-zinc-500'>
-              No hut assigned
-            </div>
-          )}
-        </div>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Devices</CardTitle>
           <div className='text-sm text-zinc-400'>
-            Devices currently known for this site.
+            <span className='text-zinc-200'>{site.code}</span>
+            <span className='mx-2 text-zinc-700'>•</span>
+            <span>{site.type ?? 'UNKNOWN'}</span>
+            <span className='mx-2 text-zinc-700'>•</span>
+            <span>{site.timezone ?? 'n/a'}</span>
           </div>
-        </CardHeader>
 
-        <CardContent>
-          {devices.length === 0 ? (
-            <div className='rounded-xl border border-zinc-900 bg-zinc-950/20 p-4 text-sm text-zinc-400'>
-              No devices yet.
+          <div className='text-xs text-zinc-500'>
+            Last ping: {fmt(site.lastHeartbeat)}
+          </div>
+        </div>
+
+        <Card className='border-zinc-800 bg-zinc-950/20'>
+          <CardHeader>
+            <CardTitle>Work in progress</CardTitle>
+            <div className='text-sm text-zinc-400'>
+              This page will track equipment and production data for this
+              location. For now, if a hut is assigned you can see that here.
             </div>
-          ) : (
-            <div className='space-y-2'>
-              {devices.map((d) => (
-                <Link
-                  key={d.id}
-                  href={`/sites/${siteId}/devices/${d.id}`}
-                  className='group block rounded-2xl border border-zinc-900 bg-zinc-950/20 p-4 transition hover:bg-zinc-900/35 hover:border-zinc-800'
-                >
-                  <div className='flex items-center justify-between gap-4'>
-                    <div className='min-w-0'>
-                      <div className='truncate font-medium text-zinc-100'>
-                        {d.name ?? d.externalId}
+          </CardHeader>
+          <CardContent className='space-y-2 text-sm text-zinc-300'>
+            <div>Planned additions:</div>
+            <ul className='list-disc space-y-1 pl-5 text-zinc-400'>
+              <li>Equipment tracking (Loaders, Heaters, Trailers, etc.)</li>
+              <li>Pressures and temperatures (where available)</li>
+              <li>Volumes / totals by location configuration</li>
+              <li>Operational alerts and trends</li>
+            </ul>
+          </CardContent>
+        </Card>
+
+        <Card className='border-zinc-800 bg-zinc-950/20'>
+          <CardHeader>
+            <CardTitle>Assigned hut</CardTitle>
+            <div className='text-sm text-zinc-400'>
+              HashHuts are mobile containers with miners/routers and their own
+              status.
+            </div>
+          </CardHeader>
+
+          <CardContent>
+            {site.currentHut ? (
+              <div className='flex flex-col gap-3'>
+                <div className='flex items-center justify-between gap-4'>
+                  <div className='min-w-0'>
+                    <div className='flex flex-wrap items-center gap-2'>
+                      <div className='text-lg font-semibold text-zinc-100'>
+                        {site.currentHut.code}
                       </div>
-                      <div className='mt-1 truncate text-xs text-zinc-500'>
-                        {d.externalId}
-                      </div>
+
+                      {hutPingOnline != null ? (
+                        <Pill tone={hutPingOnline ? 'good' : 'bad'}>
+                          PING {hutPingOnline ? 'OK' : 'DOWN'}
+                        </Pill>
+                      ) : null}
                     </div>
 
-                    <div className='shrink-0 text-xs text-zinc-400'>
-                      {d.kind}
+                    <div className='text-sm text-zinc-400'>
+                      {site.currentHut.name ?? '—'}
                     </div>
                   </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
-      <div className='flex flex-wrap gap-2'>
-        <Link
-          href='/sites'
-          className='inline-flex items-center justify-center rounded-xl border border-zinc-800 bg-zinc-950/30 px-3 py-2 text-sm font-medium transition hover:bg-zinc-900/50 hover:border-zinc-700'
-        >
-          ← Back to Sites
-        </Link>
-        <Link
-          href='/sites/new'
-          className='inline-flex items-center justify-center rounded-xl border border-zinc-800 bg-zinc-950/30 px-3 py-2 text-sm font-medium transition hover:bg-zinc-900/50 hover:border-zinc-700'
-        >
-          + New Site
-        </Link>
+                  <Link
+                    href={`/huts/${encodeURIComponent(site.currentHut.code)}`}
+                    className='shrink-0 rounded-xl border border-zinc-800 px-3 py-2 text-sm font-medium hover:bg-zinc-900/40'
+                  >
+                    Open hut →
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              <div className='text-sm text-zinc-500'>
+                No hut assigned to this site.
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

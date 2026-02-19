@@ -1,6 +1,6 @@
 'use client'
 
-import type { MinerRecord, UnitMode } from '@/lib/hut/types'
+import type { UnitMode } from '@/lib/hut/types'
 import {
   bestHashRaw,
   classify,
@@ -9,11 +9,12 @@ import {
   rawToTH
 } from '@/lib/hut/types'
 import { Badge, Button, Card, CardBody, Input } from '@/lib/hut/ui'
+import { MinerRecordDto } from '@ops/shared'
 import { ArrowDownUp } from 'lucide-react'
 import React, { useMemo, useState } from 'react'
 
 type Row = {
-  m: MinerRecord
+  m: MinerRecordDto
   th: number | null
   bucket: 'OK' | 'WARN' | 'CRIT'
   replace: boolean
@@ -26,11 +27,13 @@ const toneFor = (bucket: Row['bucket']) =>
   bucket === 'CRIT' ? 'crit' : bucket === 'WARN' ? 'warn' : 'ok'
 
 export const MinerTable: React.FC<{
-  miners: MinerRecord[]
+  miners: MinerRecordDto[]
   unitMode: UnitMode
   filter: 'ALL' | 'CRIT' | 'WARN' | 'OK'
   onFilter: (f: 'ALL' | 'CRIT' | 'WARN' | 'OK') => void
 }> = ({ miners, unitMode, filter, onFilter }) => {
+  const STALE_AFTER_SEC = 600
+
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState<'th' | 'ip' | 'power' | 'bucket'>(
     'bucket'
@@ -60,8 +63,8 @@ export const MinerTable: React.FC<{
       const c = classify(m, th)
 
       const ageSec =
-        m.ts != null
-          ? Math.max(0, Math.floor((now - new Date(m.ts).getTime()) / 1000))
+        m.ts != null && Number.isFinite(Date.parse(m.ts))
+          ? Math.max(0, Math.floor((now - Date.parse(m.ts)) / 1000))
           : null
 
       return {
@@ -233,11 +236,11 @@ export const MinerTable: React.FC<{
                   const m = r.m
                   const tone = toneFor(r.bucket)
                   const ageSec = r.ageSec
-                  const stale = ageSec != null && ageSec > 90
+                  const stale = ageSec != null && ageSec > STALE_AFTER_SEC
 
                   return (
                     <tr
-                      key={m.ip}
+                      key={`${m.ip}-${m.loc ?? 'noloc'}`}
                       className='border-b border-zinc-900/80 hover:bg-zinc-900/30'
                     >
                       <td className='px-4 py-3'>

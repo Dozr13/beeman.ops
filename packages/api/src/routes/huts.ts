@@ -1,46 +1,34 @@
-// packages/api/src/routes/huts.ts
+import { MinerRecordDto } from '@ops/shared'
 import type { FastifyPluginAsync } from 'fastify'
 
-type MinerRecord = {
-  ip: string
-  reachable: boolean
-  api_4028: boolean
-  ts?: string | null
-  loc?: string | null
-
-  ghs_5s?: number | null
-  ghs_av?: number | null
-  ghs_1m?: number | null
-  ghs_5m?: number | null
-  ghs_15m?: number | null
-
-  uptime_s?: number | null
-  accepted?: number | null
-  rejected?: number | null
-
-  fan_in?: number | null
-  fan_out?: number | null
-  power_w?: number | null
-  voltage_mv?: number | null
-
-  pool_url?: string | null
-  pool_user?: string | null
-  pool_status?: string | null
-
-  errors?: string[] | null
-  raw?: unknown
+const normalizeIp = (v: string) => {
+  const s = v.trim()
+  const m = s.match(/\b(\d{1,3}(?:\.\d{1,3}){3})\b/)
+  return (m?.[1] ?? s).trim()
 }
 
-const pickBetterMiner = (a: MinerRecord, b: MinerRecord) => {
-  const at = a.ts ? Date.parse(a.ts) : NaN
-  const bt = b.ts ? Date.parse(b.ts) : NaN
-  if (!Number.isNaN(at) && !Number.isNaN(bt)) return bt >= at ? b : a
+const tsMs = (iso: string | null | undefined) => {
+  if (!iso) return null
+  const t = Date.parse(iso)
+  return Number.isFinite(t) ? t : null
+}
+
+const pickBetterMiner = (a: MinerRecordDto, b: MinerRecordDto) => {
+  const at = tsMs(a.ts)
+  const bt = tsMs(b.ts)
+
+  // Prefer "has a timestamp" over "no timestamp"
+  if (at == null && bt != null) return b
+  if (bt == null && at != null) return a
+
+  // If both have timestamps, prefer newest
+  if (at != null && bt != null && at !== bt) return bt > at ? b : a
 
   const aScore = (a.reachable ? 10 : 0) + (a.api_4028 ? 5 : 0)
   const bScore = (b.reachable ? 10 : 0) + (b.api_4028 ? 5 : 0)
   if (aScore !== bScore) return bScore > aScore ? b : a
 
-  const fullness = (m: MinerRecord) =>
+  const fullness = (m: MinerRecordDto) =>
     Number(m.power_w != null) +
     Number(m.ghs_5s != null) +
     Number(m.ghs_av != null) +
@@ -54,11 +42,12 @@ const pickBetterMiner = (a: MinerRecord, b: MinerRecord) => {
   return a
 }
 
-const dedupeMinersByIp = (miners: MinerRecord[]) => {
-  const map = new Map<string, MinerRecord>()
+const dedupeMinersByIp = (miners: MinerRecordDto[]) => {
+  const map = new Map<string, MinerRecordDto>()
   for (const m of miners) {
-    const prev = map.get(m.ip)
-    map.set(m.ip, prev ? pickBetterMiner(prev, m) : m)
+    const key = normalizeIp(m.ip)
+    const prev = map.get(key)
+    map.set(key, prev ? pickBetterMiner(prev, m) : { ...m, ip: key })
   }
   return Array.from(map.values())
 }
@@ -81,16 +70,19 @@ const toMinerRecord = (d: {
   name: string | null
   meta: unknown
   status: { ts: Date; payload: unknown } | null
-}): MinerRecord | null => {
+}): MinerRecordDto | null => {
   const payload = asObj(d.status?.payload) ?? {}
   const meta = asObj(d.meta) ?? {}
 
-  const ip =
+  const ipRaw =
     asStr(payload.ip) ??
     asStr(meta.ip) ??
     asStr(meta.host) ??
     d.name ??
     d.externalId
+
+  if (!ipRaw) return null
+  const ip = normalizeIp(ipRaw)
 
   if (!ip) return null
 
@@ -102,8 +94,10 @@ const toMinerRecord = (d: {
   // ✅ IMPORTANT FIX:
   // Prefer meta.loc (your mapping truth) over payload.loc (ingest noise / legacy)
   const loc = asStr(meta.loc) ?? asStr((payload as any).loc) ?? null
+  // const loc = device.meta?.loc ?? payload.loc ?? null
+  console.log('loc value: ', loc)
 
-  const out: MinerRecord = {
+  const out: MinerRecordDto = {
     ip,
     reachable,
     api_4028,
@@ -323,7 +317,7 @@ export const hutsRoutes: FastifyPluginAsync = async (app) => {
 
     const minersRaw = devices
       .map((d) => toMinerRecord({ ...d, status: d.status ?? null }))
-      .filter((m): m is MinerRecord => Boolean(m))
+      .filter((m): m is MinerRecordDto => Boolean(m))
 
     const dupes = minersRaw.length - new Set(minersRaw.map((m) => m.ip)).size
     if (dupes > 0) {

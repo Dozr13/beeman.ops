@@ -1,15 +1,30 @@
-import type { ReactNode } from 'react'
+import type { PropsWithChildren } from 'react'
 import type { ViewProps } from 'react-native'
 import { View } from 'react-native'
+import { SafeAreaView } from 'react-native-safe-area-context'
 
-type Props = ViewProps & {
-  children?: ReactNode
-}
+import { cx } from './cx'
 
-export const Screen = ({ className, children, ...props }: Props) => {
+type Props = PropsWithChildren<
+  ViewProps & {
+    /** Outer container (SafeAreaView) */
+    className?: string
+    /** Inner padded container (View) */
+    contentClassName?: string
+  }
+>
+
+export const Screen = ({
+  children,
+  className,
+  contentClassName,
+  ...props
+}: Props) => {
   return (
-    <View className={className} {...props}>
-      {children}
-    </View>
+    <SafeAreaView className={cx('flex-1 bg-zinc-950', className)}>
+      <View className={cx('flex-1 px-5 py-4', contentClassName)} {...props}>
+        {children}
+      </View>
+    </SafeAreaView>
   )
 }

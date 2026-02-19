@@ -1,5 +1,6 @@
 'use client'
 
+import { HutDto, SiteDto } from '@ops/shared'
 import { useParams, useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import {
@@ -9,29 +10,12 @@ import {
   CardTitle
 } from '../../../../components/ui'
 
-type Site = {
-  id: string
-  code: string
-  name: string | null
-  type: 'HASHHUT' | 'WELLSITE' | 'UNKNOWN'
-  timezone: string
-  hutCode?: string | null
-  currentHut?: { id: string; code: string; name: string | null } | null
-}
-
-type Hut = {
-  id: string
-  code: string
-  name: string | null
-  currentSite?: { id: string; code: string; name: string | null } | null
-}
-
 export default function EditSitePage() {
   const router = useRouter()
   const { siteId } = useParams<{ siteId: string }>()
 
-  const [site, setSite] = useState<Site | null>(null)
-  const [huts, setHuts] = useState<Hut[]>([])
+  const [site, setSite] = useState<SiteDto | null>(null)
+  const [huts, setHuts] = useState<HutDto[]>([])
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 

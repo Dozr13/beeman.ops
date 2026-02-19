@@ -1,0 +1,32 @@
+name: Deploy API to Render (trigger hook)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/api/**'
+      - 'packages/db/**'
+      - 'packages/shared/**'
+      - 'yarn.lock'
+      - '.yarnrc.yml'
+      - 'package.json'
+      - 'turbo.json'
+      - 'tsconfig*.json'
+
+concurrency:
+  group: render-api-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Render Deploy Hook
+        shell: bash
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          set -euo pipefail
+          test -n "$HOOK"
+          curl -fsS -X POST "$HOOK"

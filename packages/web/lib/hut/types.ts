@@ -1,37 +1,10 @@
-export type MinerRecord = {
-  ip: string
-  reachable: boolean
-  api_4028: boolean
+import type { MinerRecordDto } from '@ops/shared'
 
-  ts?: string | null
-  loc?: string | null
-
-  ghs_5s?: number | null
-  ghs_av?: number | null
-  ghs_1m?: number | null
-  ghs_5m?: number | null
-  ghs_15m?: number | null
-
-  uptime_s?: number | null
-  accepted?: number | null
-  rejected?: number | null
-
-  fan_in?: number | null
-  fan_out?: number | null
-  power_w?: number | null
-  voltage_mv?: number | null
-
-  pool_url?: string | null
-  pool_user?: string | null
-  pool_status?: string | null
-
-  errors?: string[] | null
-  raw?: unknown
-}
+export type MinerRecord = MinerRecordDto
 
 export type UnitMode = 'auto' | 'ghs' | 'mhs'
 
-export const bestHashRaw = (m: MinerRecord) =>
+export const bestHashRaw = (m: MinerRecordDto) =>
   m.ghs_5s ?? m.ghs_1m ?? m.ghs_5m ?? m.ghs_15m ?? m.ghs_av ?? null
 
 /**
@@ -68,7 +41,7 @@ export const formatInt = (n: number | null | undefined) => {
   return n.toLocaleString()
 }
 
-export const classify = (m: MinerRecord, th: number | null) => {
+export const classify = (m: MinerRecordDto, th: number | null) => {
   const errs = new Set((m.errors ?? []).filter(Boolean))
 
   const notHashing = m.api_4028 && (th == null || th < 0.5)

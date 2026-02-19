@@ -1,5 +1,6 @@
 'use client'
 
+import { SiteType } from '@ops/shared'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import {
@@ -8,8 +9,6 @@ import {
   CardHeader,
   CardTitle
 } from '../../../components/ui'
-
-type SiteType = 'UNKNOWN' | 'WELL' | 'PAD' | 'FACILITY' | 'YARD'
 
 export default function NewSitePage() {
   const router = useRouter()

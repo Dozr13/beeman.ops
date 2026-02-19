@@ -42,16 +42,16 @@ export default function NewSite() {
   return (
     <>
       <Stack.Screen options={{ title: 'New Site' }} />
-      <Screen className='flex-1 bg-slate-950'>
+      <Screen>
         <KeyboardAvoidingView
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          className='flex-1 px-4 pt-4'
+          className='flex-1'
         >
-          <H1 className='mb-6 text-slate-50'>New Site</H1>
+          <H1 className='mb-6'>New Site</H1>
 
           <View className='gap-4'>
             <View className='gap-2'>
-              <Label className='text-slate-300'>Code</Label>
+              <Label>Code</Label>
               <Input
                 value={code}
                 onChangeText={setCode}
@@ -61,7 +61,7 @@ export default function NewSite() {
             </View>
 
             <View className='gap-2'>
-              <Label className='text-slate-300'>Name</Label>
+              <Label>Name</Label>
               <Input
                 value={name}
                 onChangeText={setName}

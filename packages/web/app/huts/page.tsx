@@ -1,3 +1,4 @@
+import { HutDto } from '@ops/shared'
 import Link from 'next/link'
 import { apiGet } from '../../components/api'
 import {
@@ -8,15 +9,8 @@ import {
   Pill
 } from '../../components/ui'
 
-type Hut = {
-  id: string
-  code: string
-  name: string | null
-  currentSite?: { id: string; code: string; name: string | null } | null
-}
-
 export default async function HutsPage() {
-  const huts = await apiGet<Hut[]>('/v1/huts')
+  const huts = await apiGet<HutDto[]>('/v1/huts')
 
   const assigned = huts.filter((h) => Boolean(h.currentSite?.id)).length
   const unassigned = huts.length - assigned
@@ -45,7 +39,7 @@ export default async function HutsPage() {
             return (
               <Card
                 key={h.id}
-                className='border-zinc-800 bg-zinc-950/20 transition hover:border-zinc-700 hover:bg-zinc-900/20'
+                className='relative border-zinc-800 bg-zinc-950/20 transition hover:border-zinc-700 hover:bg-zinc-900/20'
               >
                 <CardHeader className='flex flex-row items-start justify-between gap-4'>
                   <div className='min-w-0'>

@@ -21,7 +21,7 @@
     "generate": "prisma generate --config prisma.config.ts",
     "db:push": "prisma db push --config prisma.config.ts",
     "studio": "prisma studio --config prisma.config.ts",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "yarn generate && tsc -p tsconfig.build.json",
     "dev": "tsc -p tsconfig.build.json -w",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

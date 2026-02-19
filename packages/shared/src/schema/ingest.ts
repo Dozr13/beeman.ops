@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { DeviceKind } from './device'
+import { DeviceKind } from './device.js'
 
 export const IngestDevice = z.object({
   externalId: z.string().min(1),

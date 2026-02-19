@@ -1,3 +1,4 @@
+import { DeviceDto, MetricDto } from '@ops/shared'
 import { apiGet } from '../../../../../components/api'
 import {
   Card,
@@ -7,17 +8,6 @@ import {
   Pill
 } from '../../../../../components/ui'
 
-type Device = {
-  id: string
-  siteId: string
-  externalId: string
-  kind: string
-  name: string | null
-  meta: any
-}
-
-type Metric = { ts: string; payload: any }
-
 type PageProps = {
   params: Promise<{ siteId: string; deviceId: string }>
 }
@@ -25,8 +15,8 @@ type PageProps = {
 export default async function DevicePage({ params }: PageProps) {
   const { deviceId } = await params
 
-  const dev = await apiGet<Device>(`/v1/devices/${deviceId}`)
-  const latest = await apiGet<Metric[]>(
+  const dev = await apiGet<DeviceDto>(`/v1/devices/${deviceId}`)
+  const latest = await apiGet<MetricDto[]>(
     `/v1/devices/${deviceId}/metrics/latest?limit=50`
   )
 

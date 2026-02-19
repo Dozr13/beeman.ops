@@ -32,7 +32,8 @@ packages/mobile/dist/
 .vscode/
 
 # OS
-.DS_Store
+**/.DS_Store
+**/._*
 Thumbs.db
 
 # Logs
@@ -49,3 +50,9 @@ packages/agent/*.sqlite-wal
 # Generated / one-off files
 FILELIST.txt
 miner-ports.gnmap
+
+# macOS AppleDouble files
+._*
+
+# macOS AppleDouble files
+._*

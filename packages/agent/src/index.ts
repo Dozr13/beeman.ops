@@ -33,10 +33,7 @@ const apiUrl =
 
 // SINGLE KEY SOURCE OF TRUTH:
 const ingestKey =
-  process.env.OPS_INGEST_KEY ??
-  process.env.AGENT_INGEST_KEY ??
-  cfg.api?.ingestKey ??
-  'dev-secret-change-me'
+  process.env.OPS_INGEST_KEY ?? cfg.api?.ingestKey ?? 'dev-secret-change-me'
 
 const intervalSeconds = Number(cfg.intervalSeconds ?? 30)
 

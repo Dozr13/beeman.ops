@@ -1,85 +1,87 @@
+import { AlertDto } from '@ops/shared'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native'
+import { ActivityIndicator, ScrollView, Text, View } from 'react-native'
 import { Screen } from '../../../src/components/Screen'
 import { apiFetch } from '../../../src/lib/api'
+import { Button } from '../../../src/ui/Button'
+import { Card, CardBody } from '../../../src/ui/Card'
+import { Pill } from '../../../src/ui/Pill'
 
-type Alert = {
-  id: string
-  siteId: string | null
-  deviceId: string | null
-  severity: 'INFO' | 'WARN' | 'HIGH' | 'CRITICAL'
-  code: string
-  message: string
-  details: any | null
-  createdAt: string
-  resolvedAt: string | null
-}
-
-const sevColor = (s: Alert['severity']) => {
-  switch (s) {
-    case 'CRITICAL':
-      return 'text-red-400'
-    case 'HIGH':
-      return 'text-orange-400'
-    case 'WARN':
-      return 'text-amber-400'
-    default:
-      return 'text-slate-300'
-  }
-}
+const sevTone = (
+  s: AlertDto['severity']
+): 'neutral' | 'good' | 'warn' | 'bad' =>
+  s === 'CRITICAL' || s === 'HIGH' ? 'bad' : s === 'WARN' ? 'warn' : 'neutral'
 
 export default function AlertsScreen() {
   const qc = useQueryClient()
   const q = useQuery({
     queryKey: ['alerts', 'recent'],
-    queryFn: () => apiFetch<Alert[]>('/alerts/recent'),
+    queryFn: () => apiFetch<AlertDto[]>('/alerts/recent'),
     refetchInterval: 30_000
   })
 
   const resolve = async (id: string) => {
-    await apiFetch(`/alerts/${id}/resolve`, { method: 'POST', requireReadKey: true, body: {} })
+    await apiFetch(`/alerts/${id}/resolve`, {
+      method: 'POST',
+      requireReadKey: true,
+      body: {}
+    })
     qc.invalidateQueries({ queryKey: ['alerts', 'recent'] })
   }
 
   return (
     <Screen>
-      <Text className="text-slate-50 text-xl font-bold">Alerts</Text>
+      <Text className='text-zinc-100 text-2xl font-semibold tracking-tight'>
+        Alerts
+      </Text>
 
       {q.isLoading ? <ActivityIndicator /> : null}
-      {q.error ? <Text className="text-red-400">{(q.error as Error).message}</Text> : null}
+      {q.error ? (
+        <Text className='text-red-400'>{(q.error as Error).message}</Text>
+      ) : null}
 
-      <ScrollView className="mt-2">
+      <ScrollView className='mt-3'>
         {(q.data ?? []).map((a) => {
           const created = new Date(a.createdAt).toLocaleString()
           return (
-            <View key={a.id} className="border-b border-slate-800 py-3">
-              <View className="flex-row items-start justify-between gap-3">
-                <View className="flex-1">
-                  <Text className={`${sevColor(a.severity)} font-semibold`}>
-                    {a.severity} • {a.code}
-                  </Text>
-                  <Text className="text-slate-200 mt-1">{a.message}</Text>
-                  <Text className="text-slate-500 mt-1 text-xs">{created}</Text>
+            <Card key={a.id} className='bg-zinc-950/20'>
+              <CardBody className='gap-3'>
+                <View className='flex-row items-start justify-between gap-3'>
+                  <View className='flex-1'>
+                    <View className='flex-row items-center gap-2'>
+                      <Pill tone={sevTone(a.severity)}>{a.severity}</Pill>
+                      <Text className='text-zinc-300 text-xs font-medium'>
+                        {a.code}
+                      </Text>
+                    </View>
+
+                    <Text className='text-zinc-100 mt-2'>{a.message}</Text>
+                    <Text className='text-zinc-500 mt-1 text-xs'>
+                      {created}
+                    </Text>
+                  </View>
+
+                  {a.resolvedAt ? (
+                    <Pill tone='good'>resolved</Pill>
+                  ) : (
+                    <Button
+                      title='Resolve'
+                      onPress={() => resolve(a.id)}
+                      variant='secondary'
+                      className='px-3 py-2'
+                    />
+                  )}
                 </View>
 
-                {a.resolvedAt ? (
-                  <Text className="text-emerald-400 text-xs font-semibold">resolved</Text>
-                ) : (
-                  <Pressable
-                    onPress={() => resolve(a.id)}
-                    className="bg-slate-800 rounded-lg px-3 py-2"
-                  >
-                    <Text className="text-slate-100 font-semibold text-xs">Resolve</Text>
-                  </Pressable>
-                )}
-              </View>
-
-              {a.details ? (
-                <Text className="text-slate-500 mt-2 text-xs" numberOfLines={3}>
-                  {typeof a.details === 'string' ? a.details : JSON.stringify(a.details)}
-                </Text>
-              ) : null}
-            </View>
+                {a.details ? (
+                  <Text className='text-zinc-500 text-xs' numberOfLines={3}>
+                    {typeof a.details === 'string'
+                      ? a.details
+                      : JSON.stringify(a.details)}
+                  </Text>
+                ) : null}
+              </CardBody>
+            </Card>
           )
         })}
       </ScrollView>

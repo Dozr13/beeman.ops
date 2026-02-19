@@ -2,9 +2,10 @@
 
 import { MinerTable } from '@/components/hut/MinerTable'
 import { useAutoRefresh } from '@/lib/hooks/useAutoRefresh'
-import type { MinerRecord, UnitMode } from '@/lib/hut/types'
+import type { UnitMode } from '@/lib/hut/types'
 import { bestHashRaw, classify, formatTH, rawToTH } from '@/lib/hut/types'
 import { Badge, Button, Card, CardBody } from '@/lib/hut/ui'
+import { MinerRecordDto } from '@ops/shared'
 import {
   Activity,
   AlertTriangle,
@@ -24,8 +25,8 @@ type StatChip = {
   label: string
 }
 
-const dedupeMinersByIp = (miners: MinerRecord[]) => {
-  const pickBetter = (a: MinerRecord, b: MinerRecord) => {
+const dedupeMinersByIp = (miners: MinerRecordDto[]) => {
+  const pickBetter = (a: MinerRecordDto, b: MinerRecordDto) => {
     // Prefer newest timestamp if both exist
     const at = a.ts ? Date.parse(a.ts) : NaN
     const bt = b.ts ? Date.parse(b.ts) : NaN
@@ -40,7 +41,7 @@ const dedupeMinersByIp = (miners: MinerRecord[]) => {
     return a
   }
 
-  const map = new Map<string, MinerRecord>()
+  const map = new Map<string, MinerRecordDto>()
   for (const m of miners) {
     const prev = map.get(m.ip)
     map.set(m.ip, prev ? pickBetter(prev, m) : m)
@@ -105,7 +106,7 @@ const StatCard: React.FC<{
 )
 
 export const HutDashboard: React.FC<{ siteCode: string }> = ({ siteCode }) => {
-  const [miners, setMiners] = useState<MinerRecord[]>([])
+  const [miners, setMiners] = useState<MinerRecordDto[]>([])
   const [filter, setFilter] = useState<'ALL' | 'CRIT' | 'WARN' | 'OK'>('ALL')
   const [unitMode, setUnitMode] = useState<UnitMode>('auto')
   const [source, setSource] = useState<SourceMode>('LIVE')
@@ -124,7 +125,7 @@ export const HutDashboard: React.FC<{ siteCode: string }> = ({ siteCode }) => {
         { cache: 'no-store', signal: ctrl.signal }
       )
       if (!res.ok) throw new Error(`GET miners ${res.status}`)
-      const data = (await res.json()) as { miners?: MinerRecord[] }
+      const data = (await res.json()) as { miners?: MinerRecordDto[] }
 
       const next = Array.isArray(data.miners) ? data.miners : []
       const unique = dedupeMinersByIp(next)
