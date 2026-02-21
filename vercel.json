@@ -1,5 +1,4 @@
 {
-  "installCommand": "corepack enable && corepack prepare yarn@4.12.0 --activate && yarn -v && yarn workspaces focus @ops/web --production",
-  "buildCommand": "yarn workspace @ops/web build",
-  "outputDirectory": "packages/web/.next"
+  "installCommand": "corepack enable && corepack prepare yarn@4.12.0 --activate && yarn -v && yarn workspaces focus @ops/web",
+  "buildCommand": "yarn workspace @ops/web build"
 }
