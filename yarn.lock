@@ -2507,6 +2507,7 @@ __metadata:
     postcss: "npm:^8.4.49"
     react: "npm:^19.0.0"
     react-dom: "npm:^19.0.0"
+    recharts: "npm:^3.7.0"
     tailwindcss: "npm:^3.4.17"
     typescript: "npm:^5.5.4"
   languageName: unknown
