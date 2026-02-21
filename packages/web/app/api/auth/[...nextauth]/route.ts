@@ -2,13 +2,6 @@ import bcrypt from 'bcryptjs'
 import NextAuth from 'next-auth'
 import Credentials from 'next-auth/providers/credentials'
 
-// console.log('AUTH_USERNAME =', process.env.AUTH_USERNAME)
-// console.log(
-//   'AUTH_PASSWORD_HASH =',
-//   process.env.AUTH_PASSWORD_HASH?.slice(0, 20),
-//   '...'
-// )
-
 const handler = NextAuth({
   session: { strategy: 'jwt' },
   providers: [
@@ -25,10 +18,22 @@ const handler = NextAuth({
         const user = (creds?.username ?? '').trim()
         const pass = (creds?.password ?? '').trim()
 
+        // DEBUG (safe: no password printed)
+        console.log('[AUTH]', {
+          haveExpectedUser: !!expectedUser,
+          haveExpectedHash: !!expectedHash,
+          expectedUser,
+          gotUser: user,
+          gotPassLen: pass.length,
+          hashPrefix: expectedHash.slice(0, 7)
+        })
+
         if (!expectedUser || !expectedHash) return null
         if (user !== expectedUser) return null
 
         const ok = await bcrypt.compare(pass, expectedHash)
+        console.log('[AUTH] bcrypt ok =', ok)
+
         if (!ok) return null
 
         return { id: 'beeman', name: expectedUser }
