@@ -1,4 +1,5 @@
 import { HeartbeatBody, IngestBatch, nowIso } from '@ops/shared'
+import dotenv from 'dotenv'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { runCollectors } from './collectors/index.js'
@@ -11,31 +12,91 @@ import { createQueue } from './queue.js'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const AGENT_PKG_DIR = path.resolve(__dirname, '..') // packages/agent/src -> packages/agent
+const REPO_ROOT_DIR = path.resolve(AGENT_PKG_DIR, '..', '..')
 
-const argPath = process.argv
-  .find((a) => a.startsWith('--config='))
-  ?.split('=', 2)[1]
+// Load repo-root .env so local runs can be driven by config without exporting vars
+// (Render/Vercel environment variables will still override these by default)
+dotenv.config({
+  path: path.join(REPO_ROOT_DIR, '.env'),
+  override: false
+})
+
+console.log('ROOT - ', REPO_ROOT_DIR)
+
+const argv = process.argv
+const argPath =
+  argv.find((a) => a.startsWith('--config='))?.split('=', 2)[1] ??
+  (() => {
+    const i = argv.indexOf('--config')
+    return i >= 0 ? argv[i + 1] : undefined
+  })()
 
 const CONFIG_PATH = resolveConfigPath({
   envPath: process.env.AGENT_CONFIG_PATH,
   argPath,
   defaultFileName: 'agent.config.yml',
-  agentPackageDir: AGENT_PKG_DIR
+  agentPackageDir: AGENT_PKG_DIR,
+  repoRootDir: REPO_ROOT_DIR
 })
+
+console.log('CONFIG_PATH - ', CONFIG_PATH)
 
 const cfg = loadConfig(CONFIG_PATH)
 
+console.log('cfg - ', cfg)
+
+const asObj = (v: unknown): Record<string, unknown> | undefined =>
+  v && typeof v === 'object' && !Array.isArray(v)
+    ? (v as Record<string, unknown>)
+    : undefined
+
+const asStr = (v: unknown): string | undefined => {
+  if (typeof v !== 'string') return undefined
+  const s = v.trim()
+  return s ? s : undefined
+}
+
+const asNum = (v: unknown): number | undefined => {
+  if (typeof v === 'number' && Number.isFinite(v)) return v
+  if (typeof v === 'string') {
+    const n = Number(v)
+    return Number.isFinite(n) ? n : undefined
+  }
+  return undefined
+}
+
+const cfgApi = asObj((cfg as any).api)
+
+console.log('cfgApi - ', cfgApi)
 // ---- Read config/env ----
-const siteCode = process.env.AGENT_SITE_CODE ?? cfg.siteCode ?? 'DEV-SITE'
-const agentId = process.env.AGENT_ID ?? cfg.agentId ?? 'dev-agent'
+const siteCode =
+  asStr((cfg as any).siteCode) ??
+  asStr(process.env.AGENT_SITE_CODE) ??
+  'DEV-SITE'
+
+console.log('siteCode - ', siteCode)
+
+const agentId =
+  asStr((cfg as any).agentId) ?? asStr(process.env.AGENT_ID) ?? 'dev-agent'
+
+console.log('agentId - ', agentId)
+
 const apiUrl =
-  process.env.AGENT_API_URL ?? cfg.api?.url ?? 'http://localhost:3002'
+  asStr(cfgApi?.url) ??
+  asStr(process.env.AGENT_API_URL) ??
+  'http://localhost:3002'
+
+console.log('apiUrl - ', apiUrl)
 
 // SINGLE KEY SOURCE OF TRUTH:
 const ingestKey =
-  process.env.OPS_INGEST_KEY ?? cfg.api?.ingestKey ?? 'dev-secret-change-me'
+  asStr(process.env.OPS_INGEST_KEY) ??
+  asStr(cfgApi?.ingestKey) ??
+  'dev-secret-change-me'
 
-const intervalSeconds = Number(cfg.intervalSeconds ?? 30)
+console.log('#### INGEST KEY: ', ingestKey)
+
+const intervalSeconds = asNum((cfg as any).intervalSeconds) ?? 30
 
 // Store queue in agent package dir so it doesn’t end up in random CWDs
 const queuePath = path.join(AGENT_PKG_DIR, `agent-${siteCode}.sqlite`)

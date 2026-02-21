@@ -1,13 +1,13 @@
+import { Prisma } from '@prisma/client'
 import dotenv from 'dotenv'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { getPrisma } from '../client.js'
-import { Prisma } from '@prisma/client'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-// packages/db/src/scripts -> packages/db/src -> packages/db -> packages -> repo root
+// MAY OVERRIDE:FALSE
 dotenv.config({
   path: path.resolve(__dirname, '../../../../.env'),
   override: true

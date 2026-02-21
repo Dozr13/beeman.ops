@@ -4,12 +4,12 @@ import { fileURLToPath } from 'node:url'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
+import fs from 'node:fs'
 
-// packages/api/src -> packages/api -> packages -> repo root
-dotenv.config({
-  path: path.resolve(__dirname, '../../../.env'),
-  override: true
-})
+const envPath = path.resolve(__dirname, '../../../.env')
+if (fs.existsSync(envPath) && !process.env.RENDER) {
+  dotenv.config({ path: envPath, override: false })
+}
 
 import cors from '@fastify/cors'
 import { getPrisma } from '@ops/db'
