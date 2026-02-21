@@ -23,7 +23,7 @@
     "studio": "prisma studio --config prisma.config.ts",
     "build": "yarn generate && tsc -p tsconfig.build.json",
     "dev": "tsc -p tsconfig.build.json -w",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "yarn generate && tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.4.0",
