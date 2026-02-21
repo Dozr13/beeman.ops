@@ -1,6 +1,7 @@
 siteCode: BULLDOG-26
 siteType: WELL
-agentId: bulldog-26
+hutCode: GH180
+# agentId: bulldog-26
 
 api:
   url: https://beeman-ops-api.onrender.com

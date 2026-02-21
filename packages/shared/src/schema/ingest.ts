@@ -16,10 +16,20 @@ export const IngestMetric = z.object({
 })
 export type IngestMetric = z.infer<typeof IngestMetric>
 
-export const IngestBatch = z.object({
-  siteCode: z.string().min(1),
-  agentId: z.string().min(1),
-  devices: z.array(IngestDevice).default([]),
-  metrics: z.array(IngestMetric).min(1)
-})
+export const IngestBatch = z
+  .object({
+    siteCode: z.string().min(1).optional(),
+    hutCode: z.string().min(1).optional(),
+    agentId: z.string().min(1),
+    devices: z.array(IngestDevice).default([]),
+    metrics: z.array(IngestMetric).min(1)
+  })
+  .superRefine((v, ctx) => {
+    if (!v.siteCode && !v.hutCode) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Either siteCode or hutCode is required'
+      })
+    }
+  })
 export type IngestBatch = z.infer<typeof IngestBatch>

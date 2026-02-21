@@ -95,7 +95,7 @@ const toMinerRecord = (d: {
   // Prefer meta.loc (your mapping truth) over payload.loc (ingest noise / legacy)
   const loc = asStr(meta.loc) ?? asStr((payload as any).loc) ?? null
   // const loc = device.meta?.loc ?? payload.loc ?? null
-  console.log('loc value: ', loc)
+  // console.log('loc value: ', loc)
 
   const out: MinerRecordDto = {
     ip,

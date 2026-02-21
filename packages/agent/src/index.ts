@@ -21,7 +21,7 @@ dotenv.config({
   override: false
 })
 
-console.log('ROOT - ', REPO_ROOT_DIR)
+// console.log('ROOT - ', REPO_ROOT_DIR)
 
 const argv = process.argv
 const argPath =
@@ -39,11 +39,11 @@ const CONFIG_PATH = resolveConfigPath({
   repoRootDir: REPO_ROOT_DIR
 })
 
-console.log('CONFIG_PATH - ', CONFIG_PATH)
+// console.log('CONFIG_PATH - ', CONFIG_PATH)
 
 const cfg = loadConfig(CONFIG_PATH)
 
-console.log('cfg - ', cfg)
+// console.log('cfg - ', cfg)
 
 const asObj = (v: unknown): Record<string, unknown> | undefined =>
   v && typeof v === 'object' && !Array.isArray(v)
@@ -67,26 +67,26 @@ const asNum = (v: unknown): number | undefined => {
 
 const cfgApi = asObj((cfg as any).api)
 
-console.log('cfgApi - ', cfgApi)
+// console.log('cfgApi - ', cfgApi)
 // ---- Read config/env ----
 const siteCode =
   asStr((cfg as any).siteCode) ??
   asStr(process.env.AGENT_SITE_CODE) ??
   'DEV-SITE'
 
-console.log('siteCode - ', siteCode)
+// console.log('siteCode - ', siteCode)
 
 const agentId =
   asStr((cfg as any).agentId) ?? asStr(process.env.AGENT_ID) ?? 'dev-agent'
 
-console.log('agentId - ', agentId)
+// console.log('agentId - ', agentId)
 
 const apiUrl =
   asStr(cfgApi?.url) ??
   asStr(process.env.AGENT_API_URL) ??
   'http://localhost:3002'
 
-console.log('apiUrl - ', apiUrl)
+// console.log('apiUrl - ', apiUrl)
 
 // SINGLE KEY SOURCE OF TRUTH:
 const ingestKey =
@@ -94,7 +94,7 @@ const ingestKey =
   asStr(cfgApi?.ingestKey) ??
   'dev-secret-change-me'
 
-console.log('#### INGEST KEY: ', ingestKey)
+// console.log('#### INGEST KEY: ', ingestKey)
 
 const intervalSeconds = asNum((cfg as any).intervalSeconds) ?? 30
 

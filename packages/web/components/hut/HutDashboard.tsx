@@ -5,7 +5,7 @@ import { useAutoRefresh } from '@/lib/hooks/useAutoRefresh'
 import type { UnitMode } from '@/lib/hut/types'
 import { bestHashRaw, classify, formatTH, rawToTH } from '@/lib/hut/types'
 import { Badge, Button, Card, CardBody } from '@/lib/hut/ui'
-import { MinerRecordDto } from '@ops/shared'
+import type { MinerRecordDto } from '@ops/shared'
 import {
   Activity,
   AlertTriangle,
@@ -27,17 +27,14 @@ type StatChip = {
 
 const dedupeMinersByIp = (miners: MinerRecordDto[]) => {
   const pickBetter = (a: MinerRecordDto, b: MinerRecordDto) => {
-    // Prefer newest timestamp if both exist
     const at = a.ts ? Date.parse(a.ts) : NaN
     const bt = b.ts ? Date.parse(b.ts) : NaN
     if (!Number.isNaN(at) && !Number.isNaN(bt)) return bt >= at ? b : a
 
-    // Prefer reachable + API working
     const aScore = (a.reachable ? 10 : 0) + (a.api_4028 ? 5 : 0)
     const bScore = (b.reachable ? 10 : 0) + (b.api_4028 ? 5 : 0)
     if (aScore !== bScore) return bScore > aScore ? b : a
 
-    // Otherwise keep existing (stable)
     return a
   }
 
@@ -79,10 +76,8 @@ const StatCard: React.FC<{
   className?: string
 }> = ({ title, subtitle, icon, value, subvalue, chips, className }) => (
   <Card className={['h-full', className].filter(Boolean).join(' ')}>
-    {/* p-3.5 = 14px like your devtools test */}
     <CardBody className='p-3.5 sm:p-5 min-h-[140px] flex flex-col gap-3'>
       <StatHeader title={title} subtitle={subtitle} icon={icon} />
-
       <div className='flex-1'>
         <div className='text-3xl font-semibold leading-none text-zinc-100'>
           {value}
@@ -106,11 +101,13 @@ const StatCard: React.FC<{
 )
 
 export const HutDashboard: React.FC<{ siteCode: string }> = ({ siteCode }) => {
+  const hutCode = siteCode
+
   const [miners, setMiners] = useState<MinerRecordDto[]>([])
   const [filter, setFilter] = useState<'ALL' | 'CRIT' | 'WARN' | 'OK'>('ALL')
   const [unitMode, setUnitMode] = useState<UnitMode>('auto')
   const [source, setSource] = useState<SourceMode>('LIVE')
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const [lastFetchedAt, setLastFetchedAt] = useState<Date | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
@@ -121,7 +118,7 @@ export const HutDashboard: React.FC<{ siteCode: string }> = ({ siteCode }) => {
     const ctrl = new AbortController()
     try {
       const res = await fetch(
-        `/api/huts/${encodeURIComponent(siteCode)}/miners`,
+        `/api/huts/${encodeURIComponent(hutCode)}/miners`,
         { cache: 'no-store', signal: ctrl.signal }
       )
       if (!res.ok) throw new Error(`GET miners ${res.status}`)
@@ -132,7 +129,7 @@ export const HutDashboard: React.FC<{ siteCode: string }> = ({ siteCode }) => {
 
       setMiners(unique)
       setSource('LIVE')
-      setLastUpdated(new Date())
+      setLastFetchedAt(new Date())
     } catch (e: any) {
       setErr(e?.message ?? 'Failed to load live miners')
       throw e
@@ -140,7 +137,7 @@ export const HutDashboard: React.FC<{ siteCode: string }> = ({ siteCode }) => {
       setLoading(false)
       ctrl.abort()
     }
-  }, [siteCode])
+  }, [hutCode])
 
   useAutoRefresh({
     enabled: source === 'LIVE',
@@ -151,11 +148,44 @@ export const HutDashboard: React.FC<{ siteCode: string }> = ({ siteCode }) => {
     maxMs: 120_000
   })
 
+  const dataUpdatedAt = useMemo(() => {
+    let best = 0
+    for (const m of miners) {
+      const t = m.ts ? Date.parse(m.ts) : NaN
+      if (Number.isFinite(t)) best = Math.max(best, t)
+    }
+    return best ? new Date(best) : null
+  }, [miners])
+
+  const dataAge = useMemo(() => {
+    if (!dataUpdatedAt) return null
+    const ageMs = Date.now() - dataUpdatedAt.getTime()
+    if (ageMs < 0) return 0
+    return ageMs
+  }, [dataUpdatedAt])
+
+  const ageLabel = useMemo(() => {
+    if (dataAge == null) return '—'
+    const s = Math.floor(dataAge / 1000)
+    if (s < 60) return `${s}s ago`
+    const m = Math.floor(s / 60)
+    if (m < 60) return `${m}m ago`
+    const h = Math.floor(m / 60)
+    return `${h}h ago`
+  }, [dataAge])
+
+  const ageTone: 'ok' | 'warn' | 'crit' = useMemo(() => {
+    if (dataAge == null) return 'warn'
+    if (dataAge > 10 * 60_000) return 'crit'
+    if (dataAge > 3 * 60_000) return 'warn'
+    return 'ok'
+  }, [dataAge])
+
   const computed = useMemo(() => {
     const rows = miners.map((m) => {
-      const raw = bestHashRaw(m)
-      const th = typeof raw === 'number' ? rawToTH(raw, unitMode) : null
-      const c = classify(m, th)
+      const raw = bestHashRaw(m as any)
+      const th = typeof raw === 'number' ? rawToTH(raw as any, unitMode) : null
+      const c = classify(m as any, th)
       return { m, th, c }
     })
 
@@ -202,12 +232,6 @@ export const HutDashboard: React.FC<{ siteCode: string }> = ({ siteCode }) => {
     }
   }, [miners, unitMode])
 
-  const stale = useMemo(() => {
-    if (!lastUpdated) return false
-    const ageMs = Date.now() - lastUpdated.getTime()
-    return ageMs > 90_000
-  }, [lastUpdated])
-
   return (
     <div className='min-h-screen'>
       <div className='mx-auto max-w-7xl px-4 sm:px-6 py-5 sm:py-8 space-y-6'>
@@ -215,10 +239,11 @@ export const HutDashboard: React.FC<{ siteCode: string }> = ({ siteCode }) => {
           <div className='space-y-1'>
             <h1 className='text-2xl sm:text-3xl font-bold tracking-tight'>
               Miner Hut Dashboard{' '}
-              <span className='text-zinc-500'>({siteCode})</span>
+              <span className='text-zinc-500'>({hutCode})</span>
             </h1>
             <p className='text-sm text-zinc-400'>
-              Live status from agents + metrics (or load a JSON snapshot).
+              Stored telemetry from the last agent scan. “Last data” is based on
+              miner timestamps.
             </p>
 
             <div className='flex flex-wrap items-center gap-2 pt-1'>
@@ -227,17 +252,18 @@ export const HutDashboard: React.FC<{ siteCode: string }> = ({ siteCode }) => {
                 {source}
               </Badge>
 
-              {stale ? (
-                <Badge tone='warn'>
-                  <Clock className='h-3.5 w-3.5' />
-                  STALE
-                </Badge>
-              ) : null}
+              <Badge tone={ageTone}>
+                <Clock className='h-3.5 w-3.5' />
+                {ageLabel}
+              </Badge>
 
               <span className='text-xs text-zinc-600'>
-                {lastUpdated
-                  ? `Updated ${lastUpdated.toLocaleTimeString()}`
-                  : '—'}
+                {dataUpdatedAt
+                  ? `Last data: ${dataUpdatedAt.toLocaleString()}`
+                  : 'No data yet'}
+                {lastFetchedAt
+                  ? ` · Fetched: ${lastFetchedAt.toLocaleTimeString()}`
+                  : ''}
               </span>
 
               <Button
@@ -282,17 +308,6 @@ export const HutDashboard: React.FC<{ siteCode: string }> = ({ siteCode }) => {
           </div>
         </header>
 
-        {/* <JsonLoader
-          defaultOpen={false}
-          onLoad={(m) => {
-            setMiners(m)
-            setSource('JSON')
-            setLastUpdated(new Date())
-            setErr(null)
-          }}
-        /> */}
-
-        {/* Layout: Total gets more room; everything else flows clean */}
         <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-6 gap-4'>
           <StatCard
             className='lg:col-span-2'

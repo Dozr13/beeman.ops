@@ -57,7 +57,6 @@ export const collectWhatsMiner = async (
   }>
 
   const ts = ctx.nowIso()
-  const siteCode = String((ctx.config as any)?.siteCode ?? 'SITE')
 
   const devices: CollectorResult['devices'] = []
   const metrics: CollectorResult['metrics'] = []
@@ -69,8 +68,13 @@ export const collectWhatsMiner = async (
         const port = t.port ?? 4028
         const loc = t.name ?? host
 
-        // NEW externalId format: GH180.A01
-        const externalId = `${siteCode}.${loc}`
+        const hutCode = String((ctx.config as any)?.hutCode ?? '').trim()
+        const siteCode = String(
+          (ctx.config as any)?.siteCode ?? ctx.siteCode ?? 'SITE'
+        ).trim()
+        const prefix = hutCode || siteCode
+
+        const externalId = `${prefix}.${loc}`
 
         devices.push({
           externalId,

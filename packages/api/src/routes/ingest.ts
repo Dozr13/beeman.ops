@@ -1,5 +1,5 @@
 // packages/api/src/routes/ingest.ts
-import { HeartbeatBody, IngestBatch } from '@ops/shared'
+import { IngestBatch } from '@ops/shared'
 import type { FastifyPluginAsync } from 'fastify'
 import { requireIngestKey } from './_auth.js'
 
@@ -9,6 +9,49 @@ const RETENTION_EVERY_MS = 15 * 60 * 1000 // 15 minutes
 type JsonObj = Record<string, any>
 const asObj = (v: unknown): JsonObj =>
   v && typeof v === 'object' && !Array.isArray(v) ? (v as any) : {}
+
+type ResolveOk = { siteId: string; siteCode: string }
+type ResolveErr = { status: number; body: any }
+type ResolveResult = ResolveOk | { error: ResolveErr }
+
+const resolveSite = async (
+  app: any,
+  input: { siteCode?: string; hutCode?: string }
+): Promise<ResolveResult> => {
+  const hutCode = (input.hutCode ?? '').trim()
+  const siteCode = (input.siteCode ?? '').trim()
+
+  if (hutCode) {
+    const hut = await app.prisma.hut.findUnique({
+      where: { code: hutCode },
+      select: { id: true }
+    })
+    if (!hut)
+      return { error: { status: 404, body: { error: 'hut_not_found' } } }
+
+    const asg = await app.prisma.hutAssignment.findFirst({
+      where: { hutId: hut.id, endsAt: null },
+      select: { site: { select: { id: true, code: true } } }
+    })
+    if (!asg)
+      return { error: { status: 409, body: { error: 'hut_unassigned' } } }
+
+    return { siteId: asg.site.id, siteCode: asg.site.code }
+  }
+
+  if (!siteCode)
+    return {
+      error: { status: 400, body: { error: 'siteCode_or_hutCode_required' } }
+    }
+
+  const site = await app.prisma.site.upsert({
+    where: { code: siteCode },
+    update: {},
+    create: { code: siteCode, type: 'UNKNOWN', timezone: 'America/Denver' }
+  })
+
+  return { siteId: site.id, siteCode: site.code }
+}
 
 const mergeMetaPreserveLoc = (existing: unknown, incoming: unknown) => {
   const e = asObj(existing)
@@ -31,54 +74,35 @@ const mergeMetaPreserveLoc = (existing: unknown, incoming: unknown) => {
 }
 
 export const ingestRoutes: FastifyPluginAsync = async (app) => {
-  app.post('/heartbeat', async (req, reply) => {
-    const parsed = HeartbeatBody.safeParse(req.body)
-    if (!parsed.success) return reply.code(400).send(parsed.error.flatten())
-
-    const { siteCode, agentId, ts, meta } = parsed.data
-
-    if (!(await requireIngestKey(app, req, siteCode))) {
-      return reply.code(401).send({ error: 'unauthorized' })
-    }
-
-    const site = await app.prisma.site.upsert({
-      where: { code: siteCode },
-      update: {},
-      create: { code: siteCode, type: 'UNKNOWN', timezone: 'America/Denver' }
-    })
-
-    await app.prisma.heartbeat.create({
-      data: {
-        siteId: site.id,
-        agentId,
-        ts: new Date(ts),
-        meta: meta ?? undefined
-      }
-    })
-
-    return { ok: true }
-  })
-
-  app.post('/ingest', async (req, reply) => {
+  app.post('/v1/ingest', async (req, reply) => {
     const parsed = IngestBatch.safeParse(req.body)
     if (!parsed.success) return reply.code(400).send(parsed.error.flatten())
 
-    const { siteCode, devices, metrics } = parsed.data
+    const body = parsed.data as any
+    const devices = body.devices ?? []
+    const metrics = body.metrics ?? []
+
+    const resolved = await resolveSite(app, {
+      siteCode: body.siteCode,
+      hutCode: body.hutCode
+    })
+    if ('error' in resolved) {
+      return reply.code(resolved.error.status).send(resolved.error.body)
+    }
+
+    const { siteId, siteCode } = resolved
 
     if (!(await requireIngestKey(app, req, siteCode))) {
       return reply.code(401).send({ error: 'unauthorized' })
     }
 
-    const site = await app.prisma.site.upsert({
-      where: { code: siteCode },
-      update: {},
-      create: { code: siteCode, type: 'UNKNOWN', timezone: 'America/Denver' }
-    })
+    // IMPORTANT: use resolved siteId
+    const site = { id: siteId }
 
     // ✅ NEW: prefetch existing device meta so we can MERGE instead of clobber
     const incomingExternalIds = Array.from(
-      new Set(devices.map((d) => d.externalId))
-    )
+      new Set((devices as any[]).map((d: any) => d.externalId).filter(Boolean))
+    ) as string[]
 
     const existing = await app.prisma.device.findMany({
       where: { siteId: site.id, externalId: { in: incomingExternalIds } },
@@ -86,10 +110,10 @@ export const ingestRoutes: FastifyPluginAsync = async (app) => {
     })
 
     const existingMetaByExternalId = new Map(
-      existing.map((d) => [d.externalId, d.meta])
+      existing.map((d: any) => [d.externalId as string, d.meta])
     )
 
-    for (const d of devices) {
+    for (const d of devices as any[]) {
       const existingMeta = existingMetaByExternalId.get(d.externalId)
       const mergedMeta = mergeMetaPreserveLoc(existingMeta, d.meta)
 
@@ -114,17 +138,21 @@ export const ingestRoutes: FastifyPluginAsync = async (app) => {
     }
 
     const externalIds = Array.from(
-      new Set(metrics.map((m) => m.deviceExternalId))
-    )
+      new Set(
+        (metrics as any[]).map((m: any) => m.deviceExternalId).filter(Boolean)
+      )
+    ) as string[]
 
     const devs = await app.prisma.device.findMany({
       where: { siteId: site.id, externalId: { in: externalIds } },
       select: { id: true, externalId: true }
     })
 
-    const map = new Map(devs.map((d) => [d.externalId, d.id]))
+    const map = new Map(
+      devs.map((d: any) => [d.externalId as string, d.id as string])
+    )
 
-    for (const m of metrics) {
+    for (const m of metrics as any[]) {
       const deviceId = map.get(m.deviceExternalId)
       if (!deviceId) continue
 
@@ -154,6 +182,6 @@ export const ingestRoutes: FastifyPluginAsync = async (app) => {
       })
     }
 
-    return { ok: true, ingested: metrics.length }
+    return reply.send({ ok: true, ingested: (metrics as any[]).length })
   })
 }
