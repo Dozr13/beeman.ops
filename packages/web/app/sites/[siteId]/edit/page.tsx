@@ -1,6 +1,6 @@
 'use client'
 
-import { HutDto, SiteDto } from '@ops/shared'
+import { getSiteLatLng, HutDto, SiteDto } from '@ops/shared'
 import { useParams, useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import {
@@ -26,6 +26,9 @@ export default function EditSitePage() {
   >('UNKNOWN')
 
   const [timezone, setTimezone] = useState('America/Denver')
+
+  const [lat, setLat] = useState('')
+  const [lon, setLon] = useState('')
 
   // assignment
   const [selectedHutId, setSelectedHutId] = useState<string>('')
@@ -56,6 +59,10 @@ export default function EditSitePage() {
       setName(siteJson.name ?? '')
       setType(siteJson.type ?? 'UNKNOWN')
       setTimezone(siteJson.timezone ?? 'America/Denver')
+
+      const geo = getSiteLatLng(siteJson as any)
+      setLat(geo?.lat != null ? String(geo.lat) : '')
+      setLon(geo?.lng != null ? String(geo.lng) : '')
 
       // current assignment from API
       setSelectedHutId(siteJson.currentHut?.id ?? '')
@@ -88,7 +95,11 @@ export default function EditSitePage() {
           code,
           name: name || null,
           type,
-          timezone
+          timezone,
+          geo:
+            lat.trim() && lon.trim()
+              ? { lat: Number(lat.trim()), lng: Number(lon.trim()) }
+              : null
         }),
         cache: 'no-store'
       })
@@ -204,6 +215,30 @@ export default function EditSitePage() {
                 value={timezone}
                 onChange={(e) => setTimezone(e.target.value)}
                 className={inputBase}
+              />
+            </div>
+          </div>
+
+          <div className='grid gap-4 md:grid-cols-2'>
+            <div className='space-y-2'>
+              <div className='text-sm text-zinc-400'>Latitude</div>
+              <input
+                value={lat}
+                onChange={(e) => setLat(e.target.value)}
+                className={inputBase}
+                placeholder='40.609484'
+                inputMode='decimal'
+              />
+            </div>
+
+            <div className='space-y-2'>
+              <div className='text-sm text-zinc-400'>Longitude</div>
+              <input
+                value={lon}
+                onChange={(e) => setLon(e.target.value)}
+                className={inputBase}
+                placeholder='-107.911308'
+                inputMode='decimal'
               />
             </div>
           </div>

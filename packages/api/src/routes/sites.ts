@@ -11,6 +11,12 @@ type SiteCreateBody = {
   hutCode?: string | null
   meta?: any
   ingestKey?: string | null
+
+  // Optional geo helpers (stored in Site.meta.geo)
+  geo?: { lat: number; lng: number } | null
+  lat?: number | string | null
+  lon?: number | string | null
+  lng?: number | string | null
 }
 
 type SitePatchBody = Partial<SiteCreateBody>
@@ -36,6 +42,41 @@ const pickExampleData = (meta: any) => {
     note: typeof ex.note === 'string' ? ex.note : undefined,
     sourceFile: typeof ex.sourceFile === 'string' ? ex.sourceFile : undefined,
     sheet: typeof ex.sheet === 'string' ? ex.sheet : undefined
+  }
+}
+
+const parseGeo = (meta: any, code: string | null | undefined) => {
+  // 1) Prefer meta.geo
+  const g = meta?.geo
+  const lat = toNumOrNull(g?.lat)
+  const lng = toNumOrNull(g?.lng ?? g?.lon)
+  if (lat !== null && lng !== null) return { lat, lng }
+
+  // 2) Fallback: sometimes code is "lat,lng"
+  const s = typeof code === 'string' ? code.trim() : ''
+  const m = s.match(/^(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)$/)
+  if (!m) return null
+  const lat2 = toNumOrNull(m[1])
+  const lng2 = toNumOrNull(m[2])
+  if (lat2 === null || lng2 === null) return null
+  return { lat: lat2, lng: lng2 }
+}
+
+const mergeMetaGeo = (meta: any, body: SiteCreateBody | SitePatchBody) => {
+  const base = meta && typeof meta === 'object' ? meta : {}
+
+  const lat = body.geo?.lat ?? toNumOrNull((body as any).lat)
+  const lng =
+    body.geo?.lng ??
+    toNumOrNull((body as any).lng) ??
+    toNumOrNull((body as any).lon)
+
+  if (lat === null || lng === null) return base
+  if (lat === undefined || lng === undefined) return base
+
+  return {
+    ...base,
+    geo: { lat, lng }
   }
 }
 
@@ -138,6 +179,7 @@ export const sitesRoutes: FastifyPluginAsync = async (app) => {
     return sites.map((s) => {
       const exampleData = pickExampleData(s.meta)
       const dailyGas = buildDailyGas(s.devices as any)
+      const geo = parseGeo(s.meta, s.code)
 
       // NOTE: we do NOT mutate db meta; we just return a meta copy with derived production fields
       const meta = s.meta ?? null
@@ -165,7 +207,8 @@ export const sitesRoutes: FastifyPluginAsync = async (app) => {
         currentHut: s.hutAssignments[0]?.hut ?? null,
         // NEW: example/banner + latest daily gas for this site
         exampleData,
-        dailyGas
+        dailyGas,
+        geo
       }
     })
   })
@@ -221,6 +264,7 @@ export const sitesRoutes: FastifyPluginAsync = async (app) => {
 
     const exampleData = pickExampleData(s.meta)
     const dailyGas = buildDailyGas(s.devices as any)
+    const geo = parseGeo(s.meta, s.code)
 
     const meta = s.meta ?? null
     const metaOut = meta && typeof meta === 'object' ? { ...(meta as any) } : meta
@@ -247,6 +291,7 @@ export const sitesRoutes: FastifyPluginAsync = async (app) => {
       // NEW: example/banner + latest daily gas for this site
       exampleData,
       dailyGas,
+      geo,
       // optional: expose gas devices for device pages
       gasMeters: (s.devices ?? []).map((d: any) => ({
         id: d.id,
@@ -307,7 +352,7 @@ export const sitesRoutes: FastifyPluginAsync = async (app) => {
         type: (body.type as any) ?? 'UNKNOWN',
         timezone: body.timezone ?? 'America/Denver',
         hutCode: body.hutCode ?? null,
-        meta: body.meta ?? undefined,
+        meta: mergeMetaGeo(body.meta ?? undefined, body),
         ingestKey: body.ingestKey ?? null
       }
     })
@@ -327,7 +372,23 @@ export const sitesRoutes: FastifyPluginAsync = async (app) => {
     if (body.type !== undefined) data.type = body.type as any
     if (body.timezone !== undefined) data.timezone = body.timezone
     if (body.hutCode !== undefined) data.hutCode = body.hutCode
-    if (body.meta !== undefined) data.meta = body.meta ?? undefined
+    const wantsGeo =
+      body.geo !== undefined ||
+      body.lat !== undefined ||
+      (body as any).lng !== undefined ||
+      (body as any).lon !== undefined
+
+    if (body.meta !== undefined) {
+      // Caller explicitly provided meta; merge geo into that meta if geo fields were provided.
+      data.meta = wantsGeo ? mergeMetaGeo(body.meta ?? undefined, body) : (body.meta ?? undefined)
+    } else if (wantsGeo) {
+      // Caller provided geo fields only; merge into existing meta to avoid clobbering.
+      const existing = await app.prisma.site.findUnique({
+        where: { id },
+        select: { meta: true }
+      })
+      data.meta = mergeMetaGeo(existing?.meta ?? undefined, body)
+    }
     if (body.ingestKey !== undefined) data.ingestKey = body.ingestKey
 
     await app.prisma.site.update({

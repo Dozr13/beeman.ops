@@ -41,6 +41,13 @@ export type DailyGasSummaryDto = {
   meters: DailyGasMeterDto[]
 } | null
 
+export type SiteGeoDto = {
+  /** Latitude in decimal degrees */
+  lat: number
+  /** Longitude in decimal degrees */
+  lng: number
+} | null
+
 export type SiteDto = {
   id: string
   code: string
@@ -56,6 +63,9 @@ export type SiteDto = {
   // NEW: derived /sites fields (no schema changes required)
   exampleData?: ExampleDataDto
   dailyGas?: DailyGasSummaryDto
+
+  // NEW: derived geo fields (stored in meta.geo or sometimes encoded in code)
+  geo?: SiteGeoDto
 }
 
 export type SiteDetailDto = SiteDto & {

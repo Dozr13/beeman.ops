@@ -62,3 +62,4 @@ packages/ops-data/daily-report-email/
 .env.local
 scripts/env-*
 *.tar.gz
+backups

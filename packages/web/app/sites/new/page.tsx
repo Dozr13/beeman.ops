@@ -17,6 +17,8 @@ export default function NewSitePage() {
   const [name, setName] = useState('')
   const [type, setType] = useState<SiteType>('UNKNOWN')
   const [timezone, setTimezone] = useState('America/Denver')
+  const [lat, setLat] = useState('')
+  const [lon, setLon] = useState('')
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
@@ -31,7 +33,11 @@ export default function NewSitePage() {
           code: code.trim(),
           name: name.trim() ? name.trim() : null,
           type,
-          timezone: timezone.trim() || 'America/Denver'
+          timezone: timezone.trim() || 'America/Denver',
+          geo:
+            lat.trim() && lon.trim()
+              ? { lat: Number(lat.trim()), lng: Number(lon.trim()) }
+              : undefined
         })
       })
       if (!res.ok) throw new Error(await res.text())
@@ -74,12 +80,36 @@ export default function NewSitePage() {
               value={code}
               onChange={(e) => setCode(e.target.value)}
               className={inputBase}
-              placeholder='40.609484,-107.911308'
+            placeholder='Bulldog-26'
             />
             <div className='text-xs text-zinc-500'>
-              Tip: lat,long works great here and can be used for Directions.
+              Stable identifier used by agents/imports (e.g. Bulldog-26, wf-...).
             </div>
           </div>
+
+        <div className='grid gap-4 md:grid-cols-2'>
+          <div className='space-y-2'>
+            <div className='text-sm text-zinc-400'>Latitude</div>
+            <input
+              value={lat}
+              onChange={(e) => setLat(e.target.value)}
+              className={inputBase}
+              placeholder='40.609484'
+              inputMode='decimal'
+            />
+          </div>
+
+          <div className='space-y-2'>
+            <div className='text-sm text-zinc-400'>Longitude</div>
+            <input
+              value={lon}
+              onChange={(e) => setLon(e.target.value)}
+              className={inputBase}
+              placeholder='-107.911308'
+              inputMode='decimal'
+            />
+          </div>
+        </div>
 
           <div className='space-y-2'>
             <div className='text-sm text-zinc-400'>Name</div>
