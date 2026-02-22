@@ -2,7 +2,7 @@ import { Prisma } from '@prisma/client'
 import dotenv from 'dotenv'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { getPrisma } from '../client.js'
+import { getPrisma } from '../src/client.js'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)

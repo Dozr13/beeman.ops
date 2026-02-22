@@ -1,5 +1,5 @@
 import 'dotenv/config'
-import { getPrisma } from '../client.js'
+import { getPrisma } from '../src/client.js'
 
 const prisma = getPrisma()
 

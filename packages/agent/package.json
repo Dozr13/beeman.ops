@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "tsx watch src/index.ts --",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "echo \"(wire eslint if you want)\""
+    "lint": "echo \"(wire eslint if you want)\"",
+    "hut:add": "tsx src/scripts/hutAdd.ts"
   },
   "dependencies": {
     "@ops/shared": "workspace:*",

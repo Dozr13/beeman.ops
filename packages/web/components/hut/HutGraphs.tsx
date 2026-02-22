@@ -21,7 +21,10 @@ type HourPoint = {
   unreachable: number
   apiDown: number
   notHashing: number
+  synthetic?: boolean
 }
+
+type HourPointWithTH = HourPoint & { th: number | null }
 
 const fmtHour = (iso: string) => {
   const d = new Date(iso)
@@ -56,7 +59,7 @@ export const HutGraphs: React.FC<{ siteCode: string; unitMode: UnitMode }> = ({
     }
   }, [siteCode, range])
 
-  const chartData = useMemo(() => {
+  const chartData = useMemo<HourPointWithTH[]>(() => {
     return data.map((p) => {
       const th = rawToTH(p.total, unitMode)
       return { ...p, th }
@@ -64,6 +67,24 @@ export const HutGraphs: React.FC<{ siteCode: string; unitMode: UnitMode }> = ({
   }, [data, unitMode])
 
   const latest = chartData.at(-1)
+  const isSynthetic = Boolean(latest?.synthetic)
+
+  const isFiniteNum = (v: unknown): v is number =>
+    typeof v === 'number' && Number.isFinite(v)
+
+  const yDomain = useMemo(() => {
+    if (!chartData.length) return undefined
+
+    const vals = chartData.map((p) => p.th).filter(isFiniteNum)
+    if (!vals.length) return undefined
+
+    const min = Math.min(...vals)
+    const max = Math.max(...vals)
+    const span = Math.max(1, max - min)
+
+    const pad = Math.max(span * 0.12, max * 0.03)
+    return [Math.max(0, min - pad), max + pad] as [number, number]
+  }, [chartData])
 
   return (
     <Card>
@@ -101,6 +122,11 @@ export const HutGraphs: React.FC<{ siteCode: string; unitMode: UnitMode }> = ({
               <Badge tone='muted'>
                 {range === '24h' ? 'Last 24h' : 'Last 7d'}
               </Badge>
+              {isSynthetic ? (
+                <Badge tone='warn'>DEMO (synthetic)</Badge>
+              ) : (
+                <Badge tone='ok'>REAL</Badge>
+              )}
               {latest ? (
                 <>
                   <Badge tone={latest.unreachable ? 'crit' : 'muted'}>
@@ -165,6 +191,7 @@ export const HutGraphs: React.FC<{ siteCode: string; unitMode: UnitMode }> = ({
                 tick={{ fontSize: 12, fill: 'rgba(255,255,255,0.55)' } as any}
               />
               <YAxis
+                domain={view === 'hash' && yDomain ? yDomain : undefined}
                 tick={{ fontSize: 12, fill: 'rgba(255,255,255,0.55)' } as any}
                 tickFormatter={(v) => String(Math.round(Number(v)))}
               />
