@@ -146,7 +146,7 @@ export default function EditSitePage() {
 
   if (!site) {
     return (
-      <div className='mx-auto w-full max-w-3xl'>
+      <div className='mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 md:px-10'>
         <div className='rounded-2xl border border-zinc-900 bg-zinc-950/20 p-4 text-sm text-zinc-400'>
           Loading…
         </div>
@@ -155,7 +155,7 @@ export default function EditSitePage() {
   }
 
   return (
-    <div className='mx-auto w-full max-w-3xl space-y-6'>
+    <div className='mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 md:px-10'>
       <div>
         <h1 className='text-2xl font-semibold tracking-tight'>Edit Site</h1>
         <p className='mt-1 text-sm text-zinc-400'>

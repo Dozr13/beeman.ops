@@ -1,31 +1,23 @@
-import Link from 'next/link'
+import type { Metadata } from 'next'
 import { NavSwitch } from '../components/layout/NavSwitch'
 import './globals.css'
 
-export const metadata = {
+export const metadata: Metadata = {
   title: 'Beeman Ops',
-  description: 'Unified monitoring for wells + hashhuts'
+  description: 'Oilfield & hut monitoring'
 }
 
 export default function RootLayout({
   children
-}: {
+}: Readonly<{
   children: React.ReactNode
-}) {
+}>) {
   return (
     <html lang='en'>
-      <body className='min-h-screen bg-black text-zinc-100'>
-        <header className='flex items-center justify-between px-6 py-4 border-b border-zinc-800 bg-black/60 backdrop-blur'>
-          <Link href='/' className='font-semibold tracking-tight text-lg'>
-            Beeman Ops
-          </Link>
-
-          {/* <NavClient /> */}
-
-          <NavSwitch />
-        </header>
-
-        <main className='p-6'>{children}</main>
+      <body>
+        <NavSwitch />
+        {/* KEY CHANGE: smaller padding on mobile, same on desktop */}
+        <main className='min-h-screen p-4 sm:p-6'>{children}</main>
       </body>
     </html>
   )

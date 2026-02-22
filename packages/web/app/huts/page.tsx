@@ -17,7 +17,7 @@ export default async function HutsPage() {
 
   return (
     <div className='px-6 py-6 md:px-10'>
-      <div className='mx-auto w-full max-w-7xl space-y-6'>
+      <div className='mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 md:px-10'>
         <div className='flex flex-col gap-4 md:flex-row md:items-start md:justify-between'>
           <div className='space-y-2'>
             <h1 className='text-3xl font-semibold tracking-tight'>Huts</h1>

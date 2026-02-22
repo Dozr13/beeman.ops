@@ -35,8 +35,8 @@ export default async function SitePage({
   const dg = site.dailyGas ?? null
 
   return (
-    <div className='px-6 py-6 md:px-10'>
-      <div className='mx-auto w-full max-w-4xl space-y-6'>
+    <div className='px-4 py-4 sm:px-6 sm:py-6'>
+      <div className='mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 md:px-10'>
         <div className='flex flex-col gap-3'>
           <div className='flex flex-wrap items-center gap-2'>
             <h1 className='text-3xl font-semibold tracking-tight'>
@@ -45,24 +45,30 @@ export default async function SitePage({
 
             {ex ? <Pill tone='neutral'>EXAMPLE REPORT</Pill> : null}
 
-            {/* Ping health pill */}
             <Pill tone={pingOnline ? 'good' : 'bad'}>
               PING {pingOnline ? 'OK' : 'DOWN'}
             </Pill>
           </div>
 
-          <div className='text-sm text-zinc-400'>
-            <span className='text-zinc-200'>{site.code}</span>
-            <span className='mx-2 text-zinc-700'>•</span>
+          {/* WRAP + BREAK LONG SITE CODES ON MOBILE */}
+          <div className='mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-zinc-400'>
+            <span className='text-zinc-200 break-all sm:break-normal'>
+              {site.code}
+            </span>
+            <span className='text-zinc-700'>•</span>
             <span>{site.type ?? 'UNKNOWN'}</span>
-            <span className='mx-2 text-zinc-700'>•</span>
-            <span>{site.timezone ?? 'n/a'}</span>
+            <span className='text-zinc-700'>•</span>
+            <span className='break-all sm:break-normal'>
+              {site.timezone ?? 'n/a'}
+            </span>
           </div>
 
-          <div className='text-xs text-zinc-500'>Last ping: {fmt(site.lastHeartbeat)}</div>
+          <div className='text-xs text-zinc-500'>
+            Last ping: {fmt(site.lastHeartbeat)}
+          </div>
 
           {ex ? (
-            <div className='text-xs text-zinc-500'>
+            <div className='text-xs text-zinc-500 break-words'>
               Example data range: {ex.rangeStart} → {ex.rangeEnd}
               {ex.sourceFile ? ` • ${ex.sourceFile}` : ''}
             </div>
@@ -77,12 +83,15 @@ export default async function SitePage({
               will replace this once RTU polling is wired.
             </div>
           </CardHeader>
+
           <CardContent>
             {dg ? (
               <div className='space-y-3'>
                 <div className='flex flex-wrap items-center gap-2'>
                   <Pill tone='neutral'>DATE: {dg.date}</Pill>
-                  <div className='text-xs text-zinc-500'>Captured: {fmt(dg.ts)}</div>
+                  <div className='text-xs text-zinc-500'>
+                    Captured: {fmt(dg.ts)}
+                  </div>
                 </div>
 
                 <div className='grid gap-3 md:grid-cols-3'>
@@ -92,12 +101,14 @@ export default async function SitePage({
                       {fmtNum(dg.totals.vol_mcf)}
                     </div>
                   </div>
+
                   <div className='rounded-xl border border-zinc-800 bg-zinc-950/30 p-3'>
                     <div className='text-xs text-zinc-500'>Total MMBTU</div>
                     <div className='mt-1 text-2xl font-semibold text-zinc-100'>
                       {fmtNum(dg.totals.mmbtu)}
                     </div>
                   </div>
+
                   <div className='rounded-xl border border-zinc-800 bg-zinc-950/30 p-3'>
                     <div className='text-xs text-zinc-500'>Total Flow hrs</div>
                     <div className='mt-1 text-2xl font-semibold text-zinc-100'>
@@ -107,18 +118,23 @@ export default async function SitePage({
                 </div>
 
                 <div className='rounded-xl border border-zinc-800 bg-zinc-950/30 p-3'>
-                  <div className='text-sm font-medium text-zinc-200'>Meters</div>
+                  <div className='text-sm font-medium text-zinc-200'>
+                    Meters
+                  </div>
+
                   <div className='mt-2 space-y-2'>
                     {dg.meters.map((m) => (
                       <div
                         key={m.deviceId}
-                        className='flex flex-wrap items-center justify-between gap-2 rounded-lg border border-zinc-800 bg-zinc-950/40 p-2'
+                        className='flex flex-col gap-1 rounded-lg border border-zinc-800 bg-zinc-950/40 p-2 sm:flex-row sm:items-center sm:justify-between sm:gap-2'
                       >
                         <div className='text-sm text-zinc-200'>
                           Meter {m.externalId}
                         </div>
-                        <div className='text-xs text-zinc-500'>
-                          LP {fmtNum(m.lp_psi)} psi • DP {fmtNum(m.dp_inh2o)} inH2O • Temp {fmtNum(m.temp_f)} °F
+
+                        <div className='text-xs text-zinc-500 break-words leading-snug'>
+                          LP {fmtNum(m.lp_psi)} psi • DP {fmtNum(m.dp_inh2o)}{' '}
+                          inH2O • Temp {fmtNum(m.temp_f)} °F
                         </div>
                       </div>
                     ))}
@@ -126,7 +142,9 @@ export default async function SitePage({
                 </div>
               </div>
             ) : (
-              <div className='text-sm text-zinc-500'>No daily gas metrics found for this site yet.</div>
+              <div className='text-sm text-zinc-500'>
+                No daily gas metrics found for this site yet.
+              </div>
             )}
           </CardContent>
         </Card>
@@ -143,7 +161,7 @@ export default async function SitePage({
           <CardContent>
             {site.currentHut ? (
               <div className='flex flex-col gap-3'>
-                <div className='flex items-center justify-between gap-4'>
+                <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4'>
                   <div className='min-w-0'>
                     <div className='flex flex-wrap items-center gap-2'>
                       <div className='text-lg font-semibold text-zinc-100'>
@@ -157,7 +175,7 @@ export default async function SitePage({
                       ) : null}
                     </div>
 
-                    <div className='text-sm text-zinc-400'>
+                    <div className='text-sm text-zinc-400 break-words'>
                       {site.currentHut.name ?? '—'}
                     </div>
                   </div>
