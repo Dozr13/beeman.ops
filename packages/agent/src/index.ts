@@ -6,6 +6,7 @@ import { runCollectors } from './collectors/index.js'
 import { loadConfig, resolveConfigPath } from './config.js'
 import { postJson } from './http.js'
 import { createQueue } from './queue.js'
+import fs from 'node:fs'
 
 // ---- Robust config resolution ----
 // agent package dir = ../../ (from src/index.ts)
@@ -14,13 +15,19 @@ const __dirname = path.dirname(__filename)
 const AGENT_PKG_DIR = path.resolve(__dirname, '..') // packages/agent/src -> packages/agent
 const REPO_ROOT_DIR = path.resolve(AGENT_PKG_DIR, '..', '..')
 
-// Load repo-root .env so local runs can be driven by config without exporting vars
-// (Render/Vercel environment variables will still override these by default)
-dotenv.config({
-  path: path.join(REPO_ROOT_DIR, '.env'),
-  override: false
-})
+// Load repo-root env file for local dev.
+// Prefer .env.local if present; otherwise fall back to .env.
+// In production (Render/Vercel), do not read env files from disk.
+if (!process.env.RENDER && !process.env.VERCEL) {
+  const envLocalPath = path.join(REPO_ROOT_DIR, '.env.local')
+  const envPath = path.join(REPO_ROOT_DIR, '.env')
+  const picked = fs.existsSync(envLocalPath) ? envLocalPath : envPath
 
+  dotenv.config({
+    path: picked,
+    override: false
+  })
+}
 // console.log('ROOT - ', REPO_ROOT_DIR)
 
 const argv = process.argv

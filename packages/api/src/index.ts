@@ -1,14 +1,22 @@
 import dotenv from 'dotenv'
+import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
-import fs from 'node:fs'
 
-const envPath = path.resolve(__dirname, '../../../.env')
-if (fs.existsSync(envPath) && !process.env.RENDER) {
-  dotenv.config({ path: envPath, override: false })
+const repoRoot = path.resolve(__dirname, '../../..')
+const envLocalPath = path.join(repoRoot, '.env.local')
+const envPath = path.join(repoRoot, '.env')
+
+// In production (Render/Vercel), env vars are injected.
+// Locally, prefer .env.local, fallback to .env.
+if (!process.env.RENDER && !process.env.VERCEL) {
+  const picked = fs.existsSync(envLocalPath) ? envLocalPath : envPath
+  if (fs.existsSync(picked)) {
+    dotenv.config({ path: picked, override: false })
+  }
 }
 
 import cors from '@fastify/cors'

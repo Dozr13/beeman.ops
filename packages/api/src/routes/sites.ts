@@ -15,6 +15,82 @@ type SiteCreateBody = {
 
 type SitePatchBody = Partial<SiteCreateBody>
 
+const iso = (d: Date | null | undefined) => (d ? d.toISOString() : null)
+
+const toNumOrNull = (v: any): number | null => {
+  const n = typeof v === 'number' ? v : Number(v)
+  return Number.isFinite(n) ? n : null
+}
+
+const pickExampleData = (meta: any) => {
+  const ex = meta?.exampleData
+  if (!ex || typeof ex !== 'object') return null
+
+  const rangeStart = typeof ex.rangeStart === 'string' ? ex.rangeStart : null
+  const rangeEnd = typeof ex.rangeEnd === 'string' ? ex.rangeEnd : null
+  if (!rangeStart || !rangeEnd) return null
+
+  return {
+    rangeStart,
+    rangeEnd,
+    note: typeof ex.note === 'string' ? ex.note : undefined,
+    sourceFile: typeof ex.sourceFile === 'string' ? ex.sourceFile : undefined,
+    sheet: typeof ex.sheet === 'string' ? ex.sheet : undefined
+  }
+}
+
+const buildDailyGas = (gasDevices: Array<{ id: string; externalId: string; metrics: Array<{ ts: Date; payload: any }> }>) => {
+  const meters = gasDevices
+    .map((d) => {
+      const m = d.metrics[0]
+      if (!m) return null
+      const p = m.payload ?? {}
+      const date = typeof p.date === 'string' ? p.date : m.ts.toISOString().slice(0, 10)
+      return {
+        deviceId: d.id,
+        externalId: d.externalId,
+        ts: m.ts.toISOString(),
+        date,
+        temp_f: toNumOrNull(p.temp_f),
+        dp_inh2o: toNumOrNull(p.dp_inh2o),
+        lp_psi: toNumOrNull(p.lp_psi),
+        flow_hrs: toNumOrNull(p.flow_hrs),
+        vol_mcf: toNumOrNull(p.vol_mcf),
+        mmbtu: toNumOrNull(p.mmbtu),
+        raw: p
+      }
+    })
+    .filter(Boolean) as any[]
+
+  if (meters.length === 0) return null
+
+  // pick the most recent metric timestamp across meters
+  meters.sort((a, b) => (a.ts < b.ts ? 1 : a.ts > b.ts ? -1 : 0))
+  const latestTs = meters[0].ts
+  const latestDate = meters[0].date
+
+  // Totals across meters (same latestDate is expected in daily reports)
+  const sum = (key: 'vol_mcf' | 'mmbtu' | 'flow_hrs') => {
+    const vals = meters
+      .filter((m) => m.date === latestDate)
+      .map((m) => m[key])
+      .filter((v: any) => typeof v === 'number' && Number.isFinite(v))
+    if (vals.length === 0) return null
+    return vals.reduce((a: number, b: number) => a + b, 0)
+  }
+
+  return {
+    date: latestDate,
+    ts: latestTs,
+    totals: {
+      vol_mcf: sum('vol_mcf'),
+      mmbtu: sum('mmbtu'),
+      flow_hrs: sum('flow_hrs')
+    },
+    meters
+  }
+}
+
 export const sitesRoutes: FastifyPluginAsync = async (app) => {
   // List sites (public to the web app; auth can be added later)
   app.get('/sites', async () => {
@@ -42,24 +118,56 @@ export const sitesRoutes: FastifyPluginAsync = async (app) => {
           select: {
             hut: { select: { id: true, code: true, name: true } }
           }
+        },
+        // NEW: gas meter latest daily metric (from XLSX imports)
+        devices: {
+          where: { kind: 'GAS_METER' },
+          select: {
+            id: true,
+            externalId: true,
+            metrics: {
+              take: 1,
+              orderBy: { ts: 'desc' },
+              select: { ts: true, payload: true }
+            }
+          }
         }
       }
     })
 
-    return sites.map((s) => ({
-      id: s.id,
-      code: s.code,
-      name: s.name,
-      type: s.type,
-      timezone: s.timezone,
-      meta: s.meta,
-      hutCode: s.hutCode,
-      createdAt: s.createdAt,
-      lastHeartbeat:
-        s.heartbeats[0]?.ts?.toISOString?.() ?? s.heartbeats[0]?.ts ?? null,
-      // NEW: current hut if assigned
-      currentHut: s.hutAssignments[0]?.hut ?? null
-    }))
+    return sites.map((s) => {
+      const exampleData = pickExampleData(s.meta)
+      const dailyGas = buildDailyGas(s.devices as any)
+
+      // NOTE: we do NOT mutate db meta; we just return a meta copy with derived production fields
+      const meta = s.meta ?? null
+      const metaOut = meta && typeof meta === 'object' ? { ...(meta as any) } : meta
+
+      if (dailyGas?.totals?.vol_mcf != null) {
+        metaOut.production = {
+          ...(metaOut.production ?? {}),
+          // UI already reads meta.production.gasMcfpd
+          gasMcfpd: dailyGas.totals.vol_mcf
+        }
+      }
+
+      return {
+        id: s.id,
+        code: s.code,
+        name: s.name,
+        type: s.type,
+        timezone: s.timezone,
+        meta: metaOut,
+        hutCode: s.hutCode,
+        createdAt: s.createdAt,
+        lastHeartbeat: iso(s.heartbeats[0]?.ts),
+        // NEW: current hut if assigned
+        currentHut: s.hutAssignments[0]?.hut ?? null,
+        // NEW: example/banner + latest daily gas for this site
+        exampleData,
+        dailyGas
+      }
+    })
   })
 
   // Get one site
@@ -91,11 +199,37 @@ export const sitesRoutes: FastifyPluginAsync = async (app) => {
           select: {
             hut: { select: { id: true, code: true, name: true } }
           }
+        },
+        devices: {
+          where: { kind: 'GAS_METER' },
+          select: {
+            id: true,
+            externalId: true,
+            name: true,
+            meta: true,
+            metrics: {
+              take: 1,
+              orderBy: { ts: 'desc' },
+              select: { ts: true, payload: true }
+            }
+          }
         }
       }
     })
 
     if (!s) return null
+
+    const exampleData = pickExampleData(s.meta)
+    const dailyGas = buildDailyGas(s.devices as any)
+
+    const meta = s.meta ?? null
+    const metaOut = meta && typeof meta === 'object' ? { ...(meta as any) } : meta
+    if (dailyGas?.totals?.vol_mcf != null) {
+      metaOut.production = {
+        ...(metaOut.production ?? {}),
+        gasMcfpd: dailyGas.totals.vol_mcf
+      }
+    }
 
     return {
       id: s.id,
@@ -103,14 +237,29 @@ export const sitesRoutes: FastifyPluginAsync = async (app) => {
       name: s.name,
       type: s.type,
       timezone: s.timezone,
-      meta: s.meta,
+      meta: metaOut,
       hutCode: s.hutCode,
       ingestKey: s.ingestKey,
       createdAt: s.createdAt,
-      lastHeartbeat:
-        s.heartbeats[0]?.ts?.toISOString?.() ?? s.heartbeats[0]?.ts ?? null,
+      lastHeartbeat: iso(s.heartbeats[0]?.ts),
       // NEW: current hut if assigned
-      currentHut: s.hutAssignments[0]?.hut ?? null
+      currentHut: s.hutAssignments[0]?.hut ?? null,
+      // NEW: example/banner + latest daily gas for this site
+      exampleData,
+      dailyGas,
+      // optional: expose gas devices for device pages
+      gasMeters: (s.devices ?? []).map((d: any) => ({
+        id: d.id,
+        externalId: d.externalId,
+        name: d.name ?? null,
+        meta: d.meta ?? null,
+        latest: d.metrics?.[0]
+          ? {
+              ts: d.metrics[0].ts.toISOString(),
+              payload: d.metrics[0].payload
+            }
+          : null
+      }))
     }
   })
 
@@ -198,10 +347,7 @@ export const sitesRoutes: FastifyPluginAsync = async (app) => {
       return reply.send({ ok: true })
     } catch (e: any) {
       // Keep it predictable
-      return reply.code(400).send({
-        error: 'delete_failed',
-        message: String(e?.message ?? e)
-      })
+      return reply.code(400).send({ error: 'delete_failed' })
     }
   })
 }

@@ -13,6 +13,8 @@ export const DeviceKind = z.enum([
   'SENSOR',
   'TANK',
   'PRESSURE',
-  'TEMPERATURE'
+  'TEMPERATURE',
+  // NEW: vendor daily reports / flow metering
+  'GAS_METER'
 ])
 export type DeviceKind = z.infer<typeof DeviceKind>

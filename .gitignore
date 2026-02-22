@@ -43,6 +43,7 @@ Thumbs.db
 packages/agent/*.sqlite
 packages/agent/*.sqlite-shm
 packages/agent/*.sqlite-wal
+packages.bak/*
 
 # TypeScript build info
 *.tsbuildinfo
@@ -53,3 +54,11 @@ miner-ports.gnmap
 inspect/
 inspect/
 mnt/
+
+packages/ops-date/*.xlxs
+
+# local ops data
+packages/ops-data/daily-report-email/
+.env.local
+scripts/env-local.sh
+*.tar.gz

@@ -32,6 +32,8 @@ const getProduction = (meta: any) => {
   }
 }
 
+const fmtDate = (d: string | null | undefined) => (d ? d : '—')
+
 // ----------------------------
 // Sorting (FULL implementation)
 // ----------------------------
@@ -252,6 +254,9 @@ export default async function SitesPage({
             const ll = getSiteLatLng(s)
             const directionsUrl = ll ? googleMapsDirectionsUrl(ll) : null
 
+            const ex = s.exampleData ?? null
+            const dg = s.dailyGas ?? null
+
             return (
               <Card
                 key={s.id}
@@ -295,6 +300,20 @@ export default async function SitesPage({
                   </CardHeader>
 
                   <CardContent className='space-y-4'>
+                    {ex ? (
+                      <div className='rounded-xl border border-zinc-800 bg-zinc-950/30 p-3'>
+                        <div className='flex items-center justify-between'>
+                          <div className='text-sm font-medium text-zinc-200'>
+                            Example data
+                          </div>
+                          <Pill tone='neutral'>REPORT</Pill>
+                        </div>
+                        <div className='mt-1 text-xs text-zinc-500'>
+                          {fmtDate(ex.rangeStart)} → {fmtDate(ex.rangeEnd)}
+                        </div>
+                      </div>
+                    ) : null}
+
                     <div className='rounded-xl border border-zinc-800 bg-zinc-950/30 p-3'>
                       <div className='text-xs text-zinc-500'>Last ping</div>
                       <div className='mt-1 text-sm text-zinc-200'>
@@ -305,36 +324,41 @@ export default async function SitesPage({
                     <div className='rounded-xl border border-zinc-800 bg-zinc-950/30 p-3'>
                       <div className='flex items-center justify-between'>
                         <div className='text-sm font-medium text-zinc-200'>
-                          Production
+                          Daily gas
                         </div>
                         <div className='text-xs text-zinc-500'>
-                          placeholder-ready
+                          {dg ? dg.date : '—'}
                         </div>
                       </div>
 
                       <div className='mt-3 grid grid-cols-3 gap-2'>
                         <div className='rounded-lg border border-zinc-800 bg-zinc-950/40 p-2'>
-                          <div className='text-[11px] text-zinc-500'>Oil</div>
+                          <div className='text-[11px] text-zinc-500'>MCF</div>
                           <div className='mt-1 text-sm font-semibold text-zinc-200'>
-                            {fmtNum(prod.oilBopd)}{' '}
-                            <span className='text-xs text-zinc-500'>BOPD</span>
+                            {fmtNum(dg?.totals.vol_mcf ?? prod.gasMcfpd)}
                           </div>
                         </div>
                         <div className='rounded-lg border border-zinc-800 bg-zinc-950/40 p-2'>
-                          <div className='text-[11px] text-zinc-500'>Water</div>
+                          <div className='text-[11px] text-zinc-500'>MMBTU</div>
                           <div className='mt-1 text-sm font-semibold text-zinc-200'>
-                            {fmtNum(prod.waterBwpd)}{' '}
-                            <span className='text-xs text-zinc-500'>BWPD</span>
+                            {fmtNum(dg?.totals.mmbtu)}
                           </div>
                         </div>
                         <div className='rounded-lg border border-zinc-800 bg-zinc-950/40 p-2'>
-                          <div className='text-[11px] text-zinc-500'>Gas</div>
+                          <div className='text-[11px] text-zinc-500'>Flow hrs</div>
                           <div className='mt-1 text-sm font-semibold text-zinc-200'>
-                            {fmtNum(prod.gasMcfpd)}{' '}
-                            <span className='text-xs text-zinc-500'>MCF/D</span>
+                            {fmtNum(dg?.totals.flow_hrs)}
                           </div>
                         </div>
                       </div>
+
+                      {dg?.meters?.[0] ? (
+                        <div className='mt-3 text-xs text-zinc-500'>
+                          LP {fmtNum(dg.meters[0].lp_psi)} psi • DP{' '}
+                          {fmtNum(dg.meters[0].dp_inh2o)} inH2O • Temp{' '}
+                          {fmtNum(dg.meters[0].temp_f)} °F
+                        </div>
+                      ) : null}
                     </div>
                   </CardContent>
                 </div>
