@@ -51,3 +51,4 @@ packages/agent/*.sqlite-wal
 FILELIST.txt
 miner-ports.gnmap
 inspect/
+inspect/
