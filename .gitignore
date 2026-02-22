@@ -62,4 +62,16 @@ packages/ops-data/daily-report-email/
 .env.local
 scripts/env-*
 *.tar.gz
-backups
+
+# local backups / dumps
+backups/
+*.sql
+
+# local env scripts / secrets
+scripts/env-*.sh
+.env
+.env.local
+.env.*.local
+
+# data drops
+packages/ops-data/
