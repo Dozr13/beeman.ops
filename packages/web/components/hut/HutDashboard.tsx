@@ -17,6 +17,7 @@ import {
   ThermometerSun
 } from 'lucide-react'
 import React, { useCallback, useMemo, useState } from 'react'
+import { HutGraphs } from './HutGraphs'
 
 type SourceMode = 'LIVE' | 'JSON'
 
@@ -79,7 +80,7 @@ const StatCard: React.FC<{
     <CardBody className='p-3.5 sm:p-5 min-h-[140px] flex flex-col gap-3'>
       <StatHeader title={title} subtitle={subtitle} icon={icon} />
       <div className='flex-1'>
-        <div className='text-3xl font-semibold leading-none text-zinc-100'>
+        <div className='text-2xl sm:text-3xl font-semibold leading-none text-zinc-100'>
           {value}
         </div>
         {subvalue ? (
@@ -308,7 +309,7 @@ export const HutDashboard: React.FC<{ siteCode: string }> = ({ siteCode }) => {
           </div>
         </header>
 
-        <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-6 gap-4'>
+        <div className='grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 2xl:grid-cols-6 gap-3 sm:gap-4'>
           <StatCard
             className='lg:col-span-2'
             title='Total Hashrate'
@@ -327,7 +328,6 @@ export const HutDashboard: React.FC<{ siteCode: string }> = ({ siteCode }) => {
               </>
             }
           />
-
           <StatCard
             title='Critical'
             subtitle='Dead / not hashing / hard faults'
@@ -352,7 +352,6 @@ export const HutDashboard: React.FC<{ siteCode: string }> = ({ siteCode }) => {
                 : [])
             ]}
           />
-
           <StatCard
             title='Warnings'
             subtitle='Fixable issues / watchlist'
@@ -371,7 +370,6 @@ export const HutDashboard: React.FC<{ siteCode: string }> = ({ siteCode }) => {
                 : [])
             ]}
           />
-
           <StatCard
             title='OK'
             subtitle='Looks healthy right now'
@@ -383,7 +381,6 @@ export const HutDashboard: React.FC<{ siteCode: string }> = ({ siteCode }) => {
               </span>
             }
           />
-
           <StatCard
             title='Replace Count'
             subtitle='Bring spares'
@@ -395,6 +392,10 @@ export const HutDashboard: React.FC<{ siteCode: string }> = ({ siteCode }) => {
               </span>
             }
           />
+        </div>
+
+        <div className='space-y-4'>
+          <HutGraphs siteCode={hutCode} unitMode={unitMode} />
         </div>
 
         <MinerTable

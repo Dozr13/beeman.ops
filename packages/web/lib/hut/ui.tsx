@@ -16,7 +16,8 @@ export const Card: React.FC<
 > = ({ className, children }) => (
   <div
     className={cn(
-      'p-24 rounded-2xl border border-zinc-800 bg-zinc-900/40',
+      // ✅ NO padding here — CardBody owns padding
+      'rounded-2xl border border-zinc-800 bg-zinc-900/40',
       'shadow-[0_0_0_1px_rgba(255,255,255,0.03),0_20px_60px_rgba(0,0,0,0.55)]',
       className
     )}

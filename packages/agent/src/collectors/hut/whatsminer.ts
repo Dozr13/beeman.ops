@@ -68,12 +68,12 @@ export const collectWhatsMiner = async (
         const port = t.port ?? 4028
         const loc = t.name ?? host
 
-        const hutCode = String((ctx.config as any)?.hutCode ?? '').trim()
-        const siteCode = String(
-          (ctx.config as any)?.siteCode ?? ctx.siteCode ?? 'SITE'
-        ).trim()
-        const prefix = hutCode || siteCode
+        const ts = ctx.nowIso()
 
+        const hutCode = String((ctx.config as any)?.hutCode ?? '').trim()
+        const prefix = hutCode || String(ctx.siteCode)
+
+        // externalId format: GH180.A01 (preferred) or <siteCode>.A01 fallback
         const externalId = `${prefix}.${loc}`
 
         devices.push({
