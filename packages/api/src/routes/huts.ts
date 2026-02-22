@@ -176,6 +176,131 @@ export const hutsRoutes: FastifyPluginAsync = async (app) => {
     })
   })
 
+  app.get('/huts/:hutCode/miners/hourly', async (req, reply) => {
+    const hutCode = String((req.params as any)?.hutCode ?? '').trim()
+    const daysRaw = (req.query as any)?.days
+    const days = Math.min(30, Math.max(1, Number(daysRaw ?? 1) || 1))
+
+    const hut = await app.prisma.hut.findUnique({
+      where: { code: hutCode },
+      select: { id: true }
+    })
+    if (!hut) return reply.code(404).send({ error: 'hut_not_found' })
+
+    const asg = await app.prisma.hutAssignment.findFirst({
+      where: { hutId: hut.id, endsAt: null },
+      select: { siteId: true }
+    })
+    if (!asg) return reply.code(409).send({ error: 'hut_unassigned' })
+
+    const prefix = `${hutCode}.`
+    const devices = await app.prisma.device.findMany({
+      where: {
+        siteId: asg.siteId,
+        kind: 'MINER',
+        externalId: { startsWith: prefix }
+      },
+      select: { id: true }
+    })
+    const deviceIds = devices.map((d) => d.id)
+    if (!deviceIds.length) return reply.send([])
+
+    const floorToHour = (d: Date) => {
+      const x = new Date(d)
+      x.setMinutes(0, 0, 0)
+      return x
+    }
+
+    const now = new Date()
+    const nowHour = floorToHour(now)
+    const since = floorToHour(
+      new Date(nowHour.getTime() - days * 24 * 60 * 60 * 1000)
+    )
+
+    const rows = await app.prisma.metricHour.findMany({
+      where: {
+        deviceId: { in: deviceIds },
+        hour: { gte: since }
+      },
+      orderBy: { hour: 'asc' },
+      select: { hour: true, payload: true }
+    })
+
+    const num = (v: any): number | null => {
+      if (typeof v === 'number' && Number.isFinite(v)) return v
+      if (typeof v === 'string') {
+        const n = Number(v)
+        return Number.isFinite(n) ? n : null
+      }
+      return null
+    }
+
+    const get = (obj: any, path: string[]) =>
+      path.reduce((o, k) => (o != null ? o[k] : undefined), obj)
+
+    const pickHash = (p: any): number | null => {
+      return (
+        num(get(p, ['rollup', 'ghs_av_avg'])) ??
+        num(get(p, ['rollup', 'ghs_5s_avg'])) ??
+        num(p?.ghs_av) ??
+        num(p?.ghs_5s) ??
+        null
+      )
+    }
+
+    type Point = {
+      hour: string
+      total: number
+      unreachable: number
+      apiDown: number
+      notHashing: number
+      synthetic?: boolean
+    }
+
+    const agg = new Map<string, Point>()
+
+    for (const r of rows) {
+      const hourIso = r.hour.toISOString()
+      const p: any = r.payload ?? {}
+      const hash = pickHash(p)
+
+      const reachable = typeof p.reachable === 'boolean' ? p.reachable : true
+      const api = typeof p.api_4028 === 'boolean' ? p.api_4028 : false
+
+      const cur = agg.get(hourIso) ?? {
+        hour: hourIso,
+        total: 0,
+        unreachable: 0,
+        apiDown: 0,
+        notHashing: 0
+      }
+
+      if (hash != null) cur.total += hash
+      if (!reachable) cur.unreachable += 1
+      if (reachable && !api) cur.apiDown += 1
+      if (reachable && api && (hash == null || hash <= 0)) cur.notHashing += 1
+
+      agg.set(hourIso, cur)
+    }
+
+    // Fill missing hours so the chart is stable (24h => 25 points)
+    const out: Point[] = []
+    for (let t = since.getTime(); t <= nowHour.getTime(); t += 3600_000) {
+      const h = new Date(t).toISOString()
+      out.push(
+        agg.get(h) ?? {
+          hour: h,
+          total: 0,
+          unreachable: 0,
+          apiDown: 0,
+          notHashing: 0
+        }
+      )
+    }
+
+    return reply.send(out)
+  })
+
   app.post('/huts', async (req, reply) => {
     const body = (req.body ?? {}) as {
       code?: string

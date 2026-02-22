@@ -213,8 +213,13 @@ export const HutGraphs: React.FC<{ siteCode: string; unitMode: UnitMode }> = ({
           </div>
         </div>
 
-        <div className='mt-4 h-52 sm:h-60'>
-          <ResponsiveContainer width='100%' height='100%'>
+        <div className='mt-4 h-52 sm:h-60 min-[160px]'>
+          <ResponsiveContainer
+            width='100%'
+            height='100%'
+            minWidth={0}
+            minHeight={160}
+          >
             <LineChart
               data={chartData}
               margin={{ top: 8, right: 12, bottom: 0, left: 6 }}

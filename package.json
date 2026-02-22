@@ -7,7 +7,8 @@
   ],
   "scripts": {
     "build": "turbo build",
-    "dev": "turbo dev",
+    "dev": "turbo run dev --filter=@ops/api --filter=@ops/web --filter=@ops/agent --filter=@ops/mobile",
+    "dev:db": "yarn workspace @ops/db dev",
     "dev:api": "yarn workspace @ops/api dev",
     "dev:web": "yarn workspace @ops/web dev",
     "dev:agent": "yarn workspace @ops/agent dev",

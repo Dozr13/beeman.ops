@@ -80,17 +80,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npx vercel@latest pull --yes --environment=production --token="$VERCEL_TOKEN" --cwd packages/web
+          npx vercel@latest pull --yes --environment=production --token="$VERCEL_TOKEN"
 
       - name: Vercel build (prebuilt)
         shell: bash
         run: |
           set -euo pipefail
           export NEXT_PUBLIC_API_URL OPS_API_BASE NEXTAUTH_URL NEXTAUTH_SECRET
-          npx vercel@latest build --prod --token="$VERCEL_TOKEN" --cwd packages/web
+          npx vercel@latest build --prod --token="$VERCEL_TOKEN"
 
       - name: Vercel deploy (prebuilt)
         shell: bash
         run: |
           set -euo pipefail
-          npx vercel@latest deploy --prebuilt --prod --token="$VERCEL_TOKEN" --cwd packages/web
+          npx vercel@latest deploy --prebuilt --prod --token="$VERCEL_TOKEN"
