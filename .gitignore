@@ -60,5 +60,5 @@ packages/ops-date/*.xlxs
 # local ops data
 packages/ops-data/daily-report-email/
 .env.local
-scripts/env-local.sh
+scripts/env-*
 *.tar.gz
