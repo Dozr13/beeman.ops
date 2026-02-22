@@ -50,9 +50,4 @@ packages/agent/*.sqlite-wal
 # Generated / one-off files
 FILELIST.txt
 miner-ports.gnmap
-
-# macOS AppleDouble files
-._*
-
-# macOS AppleDouble files
-._*
+inspect/
