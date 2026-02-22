@@ -6,7 +6,6 @@ import {
   SiteDto
 } from '@ops/shared'
 import Link from 'next/link'
-import { apiGet } from '../../components/api'
 import {
   Card,
   CardContent,
@@ -14,6 +13,7 @@ import {
   CardTitle,
   Pill
 } from '../../components/ui'
+import { apiGet } from '../../lib/api'
 
 const fmt = (iso: string | null) => (iso ? new Date(iso).toLocaleString() : '—')
 

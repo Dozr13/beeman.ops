@@ -1,5 +1,4 @@
 import { DeviceDto, MetricDto } from '@ops/shared'
-import { apiGet } from '../../../../../components/api'
 import {
   Card,
   CardContent,
@@ -7,6 +6,7 @@ import {
   CardTitle,
   Pill
 } from '../../../../../components/ui'
+import { apiGet } from '../../../../../lib/api'
 
 type PageProps = {
   params: Promise<{ siteId: string; deviceId: string }>

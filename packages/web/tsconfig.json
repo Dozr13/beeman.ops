@@ -29,7 +29,8 @@
     "**/*.tsx",
     "next-env.d.ts",
     ".next/types/**/*.ts",
-    "next.config.mjs"
+    "next.config.mjs",
+    "components/hut/JsonLoader.tsx"
   ],
   "exclude": ["node_modules"]
 }

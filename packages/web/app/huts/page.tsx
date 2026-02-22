@@ -1,6 +1,5 @@
 import { HutDto } from '@ops/shared'
 import Link from 'next/link'
-import { apiGet } from '../../components/api'
 import {
   Card,
   CardContent,
@@ -8,6 +7,7 @@ import {
   CardTitle,
   Pill
 } from '../../components/ui'
+import { apiGet } from '../../lib/api'
 
 export default async function HutsPage() {
   const huts = await apiGet<HutDto[]>('/v1/huts')
