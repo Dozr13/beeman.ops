@@ -45,48 +45,20 @@ const pickExampleData = (meta: any) => {
   }
 }
 
-const parseGeo = (meta: any, code: string | null | undefined) => {
-  // 1) Prefer meta.geo
-  const g = meta?.geo
-  const lat = toNumOrNull(g?.lat)
-  const lng = toNumOrNull(g?.lng ?? g?.lon)
-  if (lat !== null && lng !== null) return { lat, lng }
-
-  // 2) Fallback: sometimes code is "lat,lng"
-  const s = typeof code === 'string' ? code.trim() : ''
-  const m = s.match(/^(-?\d+(?:\.\d+)?),\s*(-?\d+(?:\.\d+)?)$/)
-  if (!m) return null
-  const lat2 = toNumOrNull(m[1])
-  const lng2 = toNumOrNull(m[2])
-  if (lat2 === null || lng2 === null) return null
-  return { lat: lat2, lng: lng2 }
-}
-
-const mergeMetaGeo = (meta: any, body: SiteCreateBody | SitePatchBody) => {
-  const base = meta && typeof meta === 'object' ? meta : {}
-
-  const lat = body.geo?.lat ?? toNumOrNull((body as any).lat)
-  const lng =
-    body.geo?.lng ??
-    toNumOrNull((body as any).lng) ??
-    toNumOrNull((body as any).lon)
-
-  if (lat === null || lng === null) return base
-  if (lat === undefined || lng === undefined) return base
-
-  return {
-    ...base,
-    geo: { lat, lng }
-  }
-}
-
-const buildDailyGas = (gasDevices: Array<{ id: string; externalId: string; metrics: Array<{ ts: Date; payload: any }> }>) => {
+const buildDailyGas = (
+  gasDevices: Array<{
+    id: string
+    externalId: string
+    metrics: Array<{ ts: Date; payload: any }>
+  }>
+) => {
   const meters = gasDevices
     .map((d) => {
       const m = d.metrics[0]
       if (!m) return null
       const p = m.payload ?? {}
-      const date = typeof p.date === 'string' ? p.date : m.ts.toISOString().slice(0, 10)
+      const date =
+        typeof p.date === 'string' ? p.date : m.ts.toISOString().slice(0, 10)
       return {
         deviceId: d.id,
         externalId: d.externalId,
@@ -179,11 +151,11 @@ export const sitesRoutes: FastifyPluginAsync = async (app) => {
     return sites.map((s) => {
       const exampleData = pickExampleData(s.meta)
       const dailyGas = buildDailyGas(s.devices as any)
-      const geo = parseGeo(s.meta, s.code)
 
       // NOTE: we do NOT mutate db meta; we just return a meta copy with derived production fields
       const meta = s.meta ?? null
-      const metaOut = meta && typeof meta === 'object' ? { ...(meta as any) } : meta
+      const metaOut =
+        meta && typeof meta === 'object' ? { ...(meta as any) } : meta
 
       if (dailyGas?.totals?.vol_mcf != null) {
         metaOut.production = {
@@ -207,8 +179,7 @@ export const sitesRoutes: FastifyPluginAsync = async (app) => {
         currentHut: s.hutAssignments[0]?.hut ?? null,
         // NEW: example/banner + latest daily gas for this site
         exampleData,
-        dailyGas,
-        geo
+        dailyGas
       }
     })
   })
@@ -264,10 +235,10 @@ export const sitesRoutes: FastifyPluginAsync = async (app) => {
 
     const exampleData = pickExampleData(s.meta)
     const dailyGas = buildDailyGas(s.devices as any)
-    const geo = parseGeo(s.meta, s.code)
 
     const meta = s.meta ?? null
-    const metaOut = meta && typeof meta === 'object' ? { ...(meta as any) } : meta
+    const metaOut =
+      meta && typeof meta === 'object' ? { ...(meta as any) } : meta
     if (dailyGas?.totals?.vol_mcf != null) {
       metaOut.production = {
         ...(metaOut.production ?? {}),
@@ -291,7 +262,6 @@ export const sitesRoutes: FastifyPluginAsync = async (app) => {
       // NEW: example/banner + latest daily gas for this site
       exampleData,
       dailyGas,
-      geo,
       // optional: expose gas devices for device pages
       gasMeters: (s.devices ?? []).map((d: any) => ({
         id: d.id,
@@ -306,6 +276,88 @@ export const sitesRoutes: FastifyPluginAsync = async (app) => {
           : null
       }))
     }
+  })
+
+  // Daily gas time-series (for charts)
+  // Aggregates GAS_METER metrics across a site.
+  // Query: ?days=30 (default 30, max 365)
+  app.get('/sites/:siteId/gas-series', async (req) => {
+    const { siteId } = req.params as { siteId: string }
+    const q = req.query as any
+
+    const daysRaw = typeof q?.days === 'string' ? q.days : undefined
+    const daysNum = daysRaw ? Number(daysRaw) : 30
+    const days = Number.isFinite(daysNum)
+      ? Math.min(Math.max(Math.floor(daysNum), 1), 365)
+      : 30
+
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
+
+    const devices = await app.prisma.device.findMany({
+      where: { siteId, kind: 'GAS_METER' },
+      select: { id: true }
+    })
+
+    if (devices.length === 0) {
+      return { siteId, days, points: [] }
+    }
+
+    const deviceIds = devices.map((d) => d.id)
+
+    // Low volume daily reports -> aggregate in JS.
+    const metrics = await app.prisma.metric.findMany({
+      where: {
+        deviceId: { in: deviceIds },
+        ts: { gte: since }
+      },
+      orderBy: { ts: 'asc' },
+      select: {
+        ts: true,
+        payload: true
+      }
+    })
+
+    const add = (a: number | null, b: unknown) => {
+      const aa = typeof a === 'number' && Number.isFinite(a) ? a : null
+      const bb = typeof b === 'number' && Number.isFinite(b) ? b : null
+      if (aa === null && bb === null) return null
+      return (aa ?? 0) + (bb ?? 0)
+    }
+
+    const isoDay = (d: Date) => d.toISOString().slice(0, 10)
+    const byDay = new Map<
+      string,
+      { vol_mcf: number | null; mmbtu: number | null; flow_hrs: number | null }
+    >()
+
+    for (const m of metrics) {
+      const p: any = m.payload ?? {}
+      const day =
+        typeof p.date === 'string' && p.date.length >= 10
+          ? p.date.slice(0, 10)
+          : isoDay(m.ts)
+
+      const cur = byDay.get(day) ?? {
+        vol_mcf: null,
+        mmbtu: null,
+        flow_hrs: null
+      }
+      byDay.set(day, {
+        vol_mcf: add(cur.vol_mcf, p.vol_mcf),
+        mmbtu: add(cur.mmbtu, p.mmbtu),
+        flow_hrs: add(cur.flow_hrs, p.flow_hrs)
+      })
+    }
+
+    const points = [...byDay.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([date, t]) => ({
+        date,
+        ts: new Date(`${date}T00:00:00.000Z`).toISOString(),
+        ...t
+      }))
+
+    return { siteId, days, points }
   })
 
   // Devices for a site (accepts site id OR site code)
@@ -352,7 +404,7 @@ export const sitesRoutes: FastifyPluginAsync = async (app) => {
         type: (body.type as any) ?? 'UNKNOWN',
         timezone: body.timezone ?? 'America/Denver',
         hutCode: body.hutCode ?? null,
-        meta: mergeMetaGeo(body.meta ?? undefined, body),
+        meta: body.meta ?? undefined,
         ingestKey: body.ingestKey ?? null
       }
     })
@@ -372,23 +424,7 @@ export const sitesRoutes: FastifyPluginAsync = async (app) => {
     if (body.type !== undefined) data.type = body.type as any
     if (body.timezone !== undefined) data.timezone = body.timezone
     if (body.hutCode !== undefined) data.hutCode = body.hutCode
-    const wantsGeo =
-      body.geo !== undefined ||
-      body.lat !== undefined ||
-      (body as any).lng !== undefined ||
-      (body as any).lon !== undefined
-
-    if (body.meta !== undefined) {
-      // Caller explicitly provided meta; merge geo into that meta if geo fields were provided.
-      data.meta = wantsGeo ? mergeMetaGeo(body.meta ?? undefined, body) : (body.meta ?? undefined)
-    } else if (wantsGeo) {
-      // Caller provided geo fields only; merge into existing meta to avoid clobbering.
-      const existing = await app.prisma.site.findUnique({
-        where: { id },
-        select: { meta: true }
-      })
-      data.meta = mergeMetaGeo(existing?.meta ?? undefined, body)
-    }
+    if (body.meta !== undefined) data.meta = body.meta ?? undefined
     if (body.ingestKey !== undefined) data.ingestKey = body.ingestKey
 
     await app.prisma.site.update({

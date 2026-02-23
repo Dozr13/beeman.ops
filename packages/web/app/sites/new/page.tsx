@@ -17,8 +17,6 @@ export default function NewSitePage() {
   const [name, setName] = useState('')
   const [type, setType] = useState<SiteType>('UNKNOWN')
   const [timezone, setTimezone] = useState('America/Denver')
-  const [lat, setLat] = useState('')
-  const [lon, setLon] = useState('')
   const [saving, setSaving] = useState(false)
   const [err, setErr] = useState<string | null>(null)
 
@@ -33,11 +31,7 @@ export default function NewSitePage() {
           code: code.trim(),
           name: name.trim() ? name.trim() : null,
           type,
-          timezone: timezone.trim() || 'America/Denver',
-          geo:
-            lat.trim() && lon.trim()
-              ? { lat: Number(lat.trim()), lng: Number(lon.trim()) }
-              : undefined
+          timezone: timezone.trim() || 'America/Denver'
         })
       })
       if (!res.ok) throw new Error(await res.text())
@@ -54,7 +48,7 @@ export default function NewSitePage() {
     'w-full rounded-xl border border-zinc-800 bg-zinc-950/30 px-3 py-2 text-sm text-zinc-100 placeholder:text-zinc-600 outline-none transition focus:border-zinc-600 focus:ring-2 focus:ring-zinc-800/60'
 
   return (
-    <div className='mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 md:px-10'>
+    <div className='mx-auto w-full max-w-3xl space-y-6'>
       <div>
         <h1 className='text-2xl font-semibold tracking-tight'>New Site</h1>
         <p className='mt-1 text-sm text-zinc-400'>
@@ -80,35 +74,10 @@ export default function NewSitePage() {
               value={code}
               onChange={(e) => setCode(e.target.value)}
               className={inputBase}
-              placeholder='Bulldog-26'
+              placeholder='40.609484,-107.911308'
             />
             <div className='text-xs text-zinc-500'>
-              Stable identifier used by agents/imports (e.g. Bulldog-26,
-              wf-...).
-            </div>
-          </div>
-
-          <div className='grid gap-4 md:grid-cols-2'>
-            <div className='space-y-2'>
-              <div className='text-sm text-zinc-400'>Latitude</div>
-              <input
-                value={lat}
-                onChange={(e) => setLat(e.target.value)}
-                className={inputBase}
-                placeholder='40.609484'
-                inputMode='decimal'
-              />
-            </div>
-
-            <div className='space-y-2'>
-              <div className='text-sm text-zinc-400'>Longitude</div>
-              <input
-                value={lon}
-                onChange={(e) => setLon(e.target.value)}
-                className={inputBase}
-                placeholder='-107.911308'
-                inputMode='decimal'
-              />
+              Tip: lat,long works great here and can be used for Directions.
             </div>
           </div>
 

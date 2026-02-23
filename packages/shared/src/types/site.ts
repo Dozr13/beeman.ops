@@ -30,6 +30,14 @@ export type DailyGasMeterDto = {
   raw?: any
 }
 
+export type DailyGasPointDto = {
+  date: string
+  ts: string
+  vol_mcf: number | null
+  mmbtu: number | null
+  flow_hrs: number | null
+}
+
 export type DailyGasSummaryDto = {
   date: string
   ts: string

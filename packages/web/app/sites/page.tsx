@@ -1,9 +1,9 @@
 import {
   getSiteLatLng,
   googleMapsDirectionsUrl,
-  type HutDto,
+  HutDto,
   isOnline,
-  type SiteDto
+  SiteDto
 } from '@ops/shared'
 import Link from 'next/link'
 import {
@@ -111,311 +111,304 @@ export default async function SitesPage({
   const unassignedHutCount = hutCount - assignedHutCount
 
   return (
-    // IMPORTANT: no extra padding wrappers here — layout.tsx owns page padding
-    <div className='mx-auto w-full max-w-7xl space-y-6'>
-      {/* Header */}
-      <div className='flex flex-col gap-4 md:flex-row md:items-start md:justify-between'>
-        <div className='space-y-2'>
-          <h1 className='text-3xl font-semibold tracking-tight'>Sites</h1>
-          <p className='text-sm text-zinc-400'>
-            Site monitoring (ping + devices). Huts are tracked separately and
-            can be assigned to a site.
-          </p>
-          <div className='flex flex-wrap items-center gap-2 pt-1'>
-            <Pill tone='neutral'>LIVE</Pill>
-            <span className='text-xs text-zinc-500'>
-              Online = ping within 3 minutes
-            </span>
+    <div className='px-6 py-6 md:px-10'>
+      <div className='mx-auto w-full max-w-7xl space-y-6'>
+        {/* Header */}
+        <div className='flex flex-col gap-4 md:flex-row md:items-start md:justify-between'>
+          <div className='space-y-2'>
+            <h1 className='text-3xl font-semibold tracking-tight'>Sites</h1>
+            <p className='text-sm text-zinc-400'>
+              Site monitoring (ping + devices). Huts are tracked separately and
+              can be assigned to a site.
+            </p>
+            <div className='flex flex-wrap items-center gap-2 pt-1'>
+              <Pill tone='neutral'>LIVE</Pill>
+              <span className='text-xs text-zinc-500'>
+                Online = ping within 3 minutes
+              </span>
+            </div>
+          </div>
+
+          <div className='flex items-center gap-2'>
+            <Link
+              href='/sites/new'
+              className='rounded-xl border border-zinc-800 bg-zinc-950/40 px-3 py-2 text-sm font-medium hover:bg-zinc-900/40'
+            >
+              New site
+            </Link>
           </div>
         </div>
 
-        <div className='flex items-center gap-2'>
+        {/* KPI row */}
+        <div className='grid gap-4 md:grid-cols-2 xl:grid-cols-4'>
+          <Card className='border-zinc-800'>
+            <CardHeader>
+              <CardTitle>Total Sites</CardTitle>
+              <div className='text-sm text-zinc-400'>Known sites</div>
+            </CardHeader>
+            <CardContent>
+              <div className='text-4xl font-semibold tracking-tight'>
+                {sites.length}
+              </div>
+              <div className='mt-2 text-xs text-zinc-500'>
+                From pings/ingest
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className='border-zinc-800'>
+            <CardHeader>
+              <CardTitle>Online</CardTitle>
+              <div className='text-sm text-zinc-400'>Ping fresh</div>
+            </CardHeader>
+            <CardContent>
+              <div className='text-4xl font-semibold tracking-tight'>
+                {onlineCount}
+              </div>
+              <div className='mt-2'>
+                <Pill tone='good'>ONLINE</Pill>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className='border-zinc-800'>
+            <CardHeader>
+              <CardTitle>Offline</CardTitle>
+              <div className='text-sm text-zinc-400'>No recent ping</div>
+            </CardHeader>
+            <CardContent>
+              <div className='text-4xl font-semibold tracking-tight'>
+                {offlineCount}
+              </div>
+              <div className='mt-2'>
+                <Pill tone='bad'>OFFLINE</Pill>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className='border-zinc-800'>
+            <CardHeader>
+              <CardTitle>Huts</CardTitle>
+              <div className='text-sm text-zinc-400'>Assigned / Unassigned</div>
+            </CardHeader>
+            <CardContent>
+              <div className='text-sm text-zinc-400'>
+                {assignedHutCount} assigned • {unassignedHutCount} unassigned
+              </div>
+              <div className='mt-2 flex flex-wrap gap-2'>
+                <Pill tone='neutral'>HUTS: {hutCount}</Pill>
+                <Pill tone='neutral'>ASSIGNED: {assignedHutCount}</Pill>
+                <Pill tone='neutral'>UNASSIGNED: {unassignedHutCount}</Pill>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className='flex flex-wrap gap-2 text-xs text-zinc-500'>
+          <Pill tone='neutral'>WELL: {wellCount}</Pill>
+          <Pill tone='neutral'>PAD: {padCount}</Pill>
+          <Pill tone='neutral'>FACILITY: {facilityCount}</Pill>
+          <Pill tone='neutral'>YARD: {yardCount}</Pill>
+          <Pill tone='neutral'>UNKNOWN: {unknownCount}</Pill>
+        </div>
+
+        {/* Sort controls */}
+        <div className='flex flex-wrap items-center gap-2'>
+          <div className='text-sm text-zinc-400'>Sort:</div>
+
           <Link
-            href='/sites/new'
-            className='rounded-xl border border-zinc-800 bg-zinc-950/40 px-3 py-2 text-sm font-medium hover:bg-zinc-900/40'
+            href={buildSortHref('status', sort === 'status' ? dir : 'asc')}
+            className={`rounded-xl border px-3 py-2 text-sm font-medium ${
+              sort === 'status'
+                ? 'border-emerald-700/60 bg-emerald-950/30 text-emerald-200'
+                : 'border-zinc-800 hover:bg-zinc-900/40'
+            }`}
           >
-            New site
+            Status
+          </Link>
+
+          <Link
+            href={buildSortHref('name', sort === 'name' ? dir : 'asc')}
+            className={`rounded-xl border px-3 py-2 text-sm font-medium ${
+              sort === 'name'
+                ? 'border-emerald-700/60 bg-emerald-950/30 text-emerald-200'
+                : 'border-zinc-800 hover:bg-zinc-900/40'
+            }`}
+          >
+            Name
+          </Link>
+
+          <Link
+            href={buildSortHref(sort, dir === 'asc' ? 'desc' : 'asc')}
+            className='rounded-xl border border-zinc-800 px-3 py-2 text-sm font-medium hover:bg-zinc-900/40'
+          >
+            {dir.toUpperCase()}
           </Link>
         </div>
-      </div>
 
-      {/* KPI row */}
-      <div className='grid gap-4 md:grid-cols-2 xl:grid-cols-4'>
-        <Card className='border-zinc-800'>
-          <CardHeader>
-            <CardTitle>Total Sites</CardTitle>
-            <div className='text-sm text-zinc-400'>Known sites</div>
-          </CardHeader>
-          <CardContent>
-            <div className='text-4xl font-semibold tracking-tight'>
-              {sites.length}
-            </div>
-            <div className='mt-2 text-xs text-zinc-500'>From pings/ingest</div>
-          </CardContent>
-        </Card>
+        {/* Sites grid */}
+        <div className='grid gap-4 md:grid-cols-2 xl:grid-cols-3'>
+          {sortedSites.map((s) => {
+            const online = isOnline(s.lastHeartbeat)
+            const prod = getProduction(s.meta)
+            const ll = getSiteLatLng(s)
+            const directionsUrl = ll ? googleMapsDirectionsUrl(ll) : null
 
-        <Card className='border-zinc-800'>
-          <CardHeader>
-            <CardTitle>Online</CardTitle>
-            <div className='text-sm text-zinc-400'>Ping fresh</div>
-          </CardHeader>
-          <CardContent>
-            <div className='text-4xl font-semibold tracking-tight'>
-              {onlineCount}
-            </div>
-            <div className='mt-2'>
-              <Pill tone='good'>ONLINE</Pill>
-            </div>
-          </CardContent>
-        </Card>
+            const ex = s.exampleData ?? null
+            const dg = s.dailyGas ?? null
 
-        <Card className='border-zinc-800'>
-          <CardHeader>
-            <CardTitle>Offline</CardTitle>
-            <div className='text-sm text-zinc-400'>No recent ping</div>
-          </CardHeader>
-          <CardContent>
-            <div className='text-4xl font-semibold tracking-tight'>
-              {offlineCount}
-            </div>
-            <div className='mt-2'>
-              <Pill tone='bad'>OFFLINE</Pill>
-            </div>
-          </CardContent>
-        </Card>
+            return (
+              <Card
+                key={s.id}
+                className='relative border-zinc-800 bg-zinc-950/20 transition hover:border-zinc-700 hover:bg-zinc-900/20'
+              >
+                {/* Clickable overlay (SAFE now because Card is relative) */}
+                <Link
+                  href={`/sites/${s.id}`}
+                  aria-label={`Open site ${s.name ?? s.code}`}
+                  className='absolute inset-0 z-0 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/40'
+                />
 
-        <Card className='border-zinc-800'>
-          <CardHeader>
-            <CardTitle>Huts</CardTitle>
-            <div className='text-sm text-zinc-400'>Assigned / Unassigned</div>
-          </CardHeader>
-          <CardContent>
-            <div className='text-sm text-zinc-400'>
-              {assignedHutCount} assigned • {unassignedHutCount} unassigned
-            </div>
-            <div className='mt-2 flex flex-wrap gap-2'>
-              <Pill tone='neutral'>HUTS: {hutCount}</Pill>
-              <Pill tone='neutral'>ASSIGNED: {assignedHutCount}</Pill>
-              <Pill tone='neutral'>UNASSIGNED: {unassignedHutCount}</Pill>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+                {/* Content sits above overlay but does NOT steal clicks */}
+                <div className='relative z-10 pointer-events-none'>
+                  <CardHeader className='flex flex-row items-start gap-4'>
+                    <div className='min-w-full'>
+                      <div className='flex justify-between'>
+                        <CardTitle className='truncate'>
+                          {s.name ?? s.code}
+                        </CardTitle>
+                        <div className='flex items-end gap-2'>
+                          <Pill tone={online ? 'good' : 'bad'}>
+                            {online ? 'ONLINE' : 'OFFLINE'}
+                          </Pill>
 
-      <div className='flex flex-wrap gap-2 text-xs text-zinc-500'>
-        <Pill tone='neutral'>WELL: {wellCount}</Pill>
-        <Pill tone='neutral'>PAD: {padCount}</Pill>
-        <Pill tone='neutral'>FACILITY: {facilityCount}</Pill>
-        <Pill tone='neutral'>YARD: {yardCount}</Pill>
-        <Pill tone='neutral'>UNKNOWN: {unknownCount}</Pill>
-      </div>
-
-      {/* Sort controls */}
-      <div className='flex flex-wrap items-center gap-2'>
-        <div className='text-sm text-zinc-400'>Sort:</div>
-
-        <Link
-          scroll={false}
-          href={buildSortHref('status', sort === 'status' ? dir : 'asc')}
-          className={`rounded-xl border px-3 py-2 text-sm font-medium ${
-            sort === 'status'
-              ? 'border-emerald-700/60 bg-emerald-950/30 text-emerald-200'
-              : 'border-zinc-800 hover:bg-zinc-900/40'
-          }`}
-        >
-          Status
-        </Link>
-
-        <Link
-          scroll={false}
-          href={buildSortHref('name', sort === 'name' ? dir : 'asc')}
-          className={`rounded-xl border px-3 py-2 text-sm font-medium ${
-            sort === 'name'
-              ? 'border-emerald-700/60 bg-emerald-950/30 text-emerald-200'
-              : 'border-zinc-800 hover:bg-zinc-900/40'
-          }`}
-        >
-          Name
-        </Link>
-
-        <Link
-          scroll={false}
-          href={buildSortHref(sort, dir === 'asc' ? 'desc' : 'asc')}
-          className='rounded-xl border border-zinc-800 px-3 py-2 text-sm font-medium hover:bg-zinc-900/40'
-        >
-          {dir.toUpperCase()}
-        </Link>
-      </div>
-
-      {/* Sites grid */}
-      <div className='grid gap-4 md:grid-cols-2 xl:grid-cols-3'>
-        {sortedSites.map((s) => {
-          const online = isOnline(s.lastHeartbeat)
-          const prod = getProduction(s.meta)
-          const ll = getSiteLatLng(s)
-          const directionsUrl = ll ? googleMapsDirectionsUrl(ll) : null
-
-          const ex = s.exampleData ?? null
-          const dg = s.dailyGas ?? null
-
-          return (
-            <Card
-              key={s.id}
-              className='relative border-zinc-800 bg-zinc-950/20 transition hover:border-zinc-700 hover:bg-zinc-900/20'
-            >
-              {/* Clickable overlay */}
-              <Link
-                href={`/sites/${s.id}`}
-                aria-label={`Open site ${s.name ?? s.code}`}
-                className='absolute inset-0 z-0 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/40'
-              />
-
-              {/* Content above overlay */}
-              <div className='relative z-10 pointer-events-none'>
-                {/* FIX: column header on mobile, row on larger screens (prevents overflow) */}
-                <CardHeader className='flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4'>
-                  <div className='min-w-0 flex-1'>
-                    <CardTitle className='text-lg truncate'>
-                      {s.name ?? s.code}
-                    </CardTitle>
-
-                    <div className='mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400'>
-                      <span className='text-zinc-300 break-all sm:break-normal'>
-                        {s.code}
-                      </span>
-                      <span className='text-zinc-700'>•</span>
-                      <span>{s.type ?? 'UNKNOWN'}</span>
-                      <span className='text-zinc-700'>•</span>
-                      <span className='break-all sm:break-normal'>
-                        {s.timezone ?? 'n/a'}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className='flex flex-wrap items-center gap-2 sm:justify-end'>
-                    <Pill tone={online ? 'good' : 'bad'}>
-                      {online ? 'ONLINE' : 'OFFLINE'}
-                    </Pill>
-                    {s.currentHut ? (
-                      <Pill tone='neutral'>HUT: {s.currentHut.code}</Pill>
-                    ) : (
-                      <Pill tone='neutral'>NO HUT</Pill>
-                    )}
-                  </div>
-                </CardHeader>
-
-                <CardContent className='space-y-4'>
-                  {ex ? (
-                    <div className='rounded-xl border border-zinc-800 bg-zinc-950/30 p-3'>
-                      <div className='flex flex-wrap items-center justify-between gap-2'>
-                        <div className='text-sm font-medium text-zinc-200'>
-                          Example data
-                        </div>
-                        <Pill tone='neutral'>REPORT</Pill>
-                      </div>
-                      <div className='mt-1 text-xs text-zinc-500'>
-                        {fmtDate(ex.rangeStart)} → {fmtDate(ex.rangeEnd)}
-                      </div>
-                    </div>
-                  ) : null}
-
-                  <div className='rounded-xl border border-zinc-800 bg-zinc-950/30 p-3'>
-                    <div className='text-xs text-zinc-500'>Last ping</div>
-                    <div className='mt-1 text-sm text-zinc-200'>
-                      {fmt(s.lastHeartbeat)}
-                    </div>
-                  </div>
-
-                  <div className='rounded-xl border border-zinc-800 bg-zinc-950/30 p-3'>
-                    <div className='flex flex-wrap items-center justify-between gap-2'>
-                      <div className='text-sm font-medium text-zinc-200'>
-                        Daily gas
-                      </div>
-                      <div className='text-xs text-zinc-500'>
-                        {dg ? dg.date : '—'}
-                      </div>
-                    </div>
-
-                    <div className='mt-3 grid grid-cols-3 gap-2'>
-                      <div className='rounded-lg border border-zinc-800 bg-zinc-950/40 p-2'>
-                        <div className='text-[11px] text-zinc-500'>MCF</div>
-                        <div className='mt-1 text-sm font-semibold text-zinc-200'>
-                          {fmtNum(dg?.totals.vol_mcf ?? prod.gasMcfpd)}
+                          {s.currentHut ? (
+                            <Pill tone='neutral'>HUT: {s.currentHut.code}</Pill>
+                          ) : (
+                            <Pill tone='neutral'>NO HUT</Pill>
+                          )}
                         </div>
                       </div>
-                      <div className='rounded-lg border border-zinc-800 bg-zinc-950/40 p-2'>
-                        <div className='text-[11px] text-zinc-500'>MMBTU</div>
-                        <div className='mt-1 text-sm font-semibold text-zinc-200'>
-                          {fmtNum(dg?.totals.mmbtu)}
-                        </div>
-                      </div>
-                      <div className='rounded-lg border border-zinc-800 bg-zinc-950/40 p-2'>
-                        <div className='text-[11px] text-zinc-500'>
-                          Flow hrs
-                        </div>
-                        <div className='mt-1 text-sm font-semibold text-zinc-200'>
-                          {fmtNum(dg?.totals.flow_hrs)}
-                        </div>
+                      <div className='mt-1 text-xs text-zinc-400'>
+                        <span className='text-zinc-300'>{s.code}</span>
+                        <span className='mx-2 text-zinc-700'>•</span>
+                        <span>{s.type ?? 'UNKNOWN'}</span>
+                        <span className='mx-2 text-zinc-700'>•</span>
+                        <span>{s.timezone ?? 'n/a'}</span>
                       </div>
                     </div>
+                  </CardHeader>
 
-                    {dg?.meters?.[0] ? (
-                      <div className='mt-3 text-xs text-zinc-500'>
-                        LP {fmtNum(dg.meters[0].lp_psi)} psi • DP{' '}
-                        {fmtNum(dg.meters[0].dp_inh2o)} inH2O • Temp{' '}
-                        {fmtNum(dg.meters[0].temp_f)} °F
+                  <CardContent className='space-y-4'>
+                    {ex ? (
+                      <div className='rounded-xl border border-zinc-800 bg-zinc-950/30 p-3'>
+                        <div className='flex items-center justify-between'>
+                          <div className='text-sm font-medium text-zinc-200'>
+                            Example data
+                          </div>
+                          <Pill tone='neutral'>REPORT</Pill>
+                        </div>
+                        <div className='mt-1 text-xs text-zinc-500'>
+                          {fmtDate(ex.rangeStart)} → {fmtDate(ex.rangeEnd)}
+                        </div>
                       </div>
                     ) : null}
-                  </div>
-                </CardContent>
-              </div>
 
-              {/* Actions clickable */}
-              <div className='relative z-20 px-5 pb-5 pointer-events-auto'>
-                {/* FIX: make buttons wrap cleanly; no overflow on narrow screens */}
-                <div className='flex flex-wrap gap-2'>
-                  <Link
-                    href={`/sites/${s.id}`}
-                    className='rounded-xl border border-zinc-800 px-3 py-2 text-sm font-medium hover:bg-zinc-900/40'
-                  >
-                    View
-                  </Link>
-
-                  <Link
-                    href={`/sites/${s.id}/edit`}
-                    className='rounded-xl border border-zinc-800 px-3 py-2 text-sm font-medium hover:bg-zinc-900/40'
-                  >
-                    Edit
-                  </Link>
-
-                  {directionsUrl ? (
-                    <a
-                      href={directionsUrl}
-                      target='_blank'
-                      rel='noreferrer'
-                      className='rounded-xl border border-zinc-800 px-3 py-2 text-sm font-medium hover:bg-zinc-900/40'
-                    >
-                      Directions →
-                    </a>
-                  ) : null}
-
-                  {s.currentHut ? (
-                    <Link
-                      href={`/huts/${encodeURIComponent(s.currentHut.code)}`}
-                      className='rounded-xl border border-zinc-800 px-3 py-2 text-sm font-medium hover:bg-zinc-900/40'
-                    >
-                      Open hut →
-                    </Link>
-                  ) : (
-                    <div className='px-3 py-2 text-sm text-zinc-500'>
-                      No hut mapped
+                    <div className='rounded-xl border border-zinc-800 bg-zinc-950/30 p-3'>
+                      <div className='text-xs text-zinc-500'>Last ping</div>
+                      <div className='mt-1 text-sm text-zinc-200'>
+                        {fmt(s.lastHeartbeat)}
+                      </div>
                     </div>
-                  )}
+
+                    <div className='rounded-xl border border-zinc-800 bg-zinc-950/30 p-3'>
+                      <div className='flex items-center justify-between'>
+                        <div className='text-sm font-medium text-zinc-200'>
+                          Daily gas
+                        </div>
+                        <div className='text-xs text-zinc-500'>
+                          {dg ? dg.date : '—'}
+                        </div>
+                      </div>
+
+                      <div className='mt-3 grid grid-cols-3 gap-2'>
+                        <div className='rounded-lg border border-zinc-800 bg-zinc-950/40 p-2'>
+                          <div className='text-[11px] text-zinc-500'>MCF</div>
+                          <div className='mt-1 text-sm font-semibold text-zinc-200'>
+                            {fmtNum(dg?.totals.vol_mcf ?? prod.gasMcfpd)}
+                          </div>
+                        </div>
+                        <div className='rounded-lg border border-zinc-800 bg-zinc-950/40 p-2'>
+                          <div className='text-[11px] text-zinc-500'>MMBTU</div>
+                          <div className='mt-1 text-sm font-semibold text-zinc-200'>
+                            {fmtNum(dg?.totals.mmbtu)}
+                          </div>
+                        </div>
+                        <div className='rounded-lg border border-zinc-800 bg-zinc-950/40 p-2'>
+                          <div className='text-[11px] text-zinc-500'>Flow hrs</div>
+                          <div className='mt-1 text-sm font-semibold text-zinc-200'>
+                            {fmtNum(dg?.totals.flow_hrs)}
+                          </div>
+                        </div>
+                      </div>
+
+                      {dg?.meters?.[0] ? (
+                        <div className='mt-3 text-xs text-zinc-500'>
+                          LP {fmtNum(dg.meters[0].lp_psi)} psi • DP{' '}
+                          {fmtNum(dg.meters[0].dp_inh2o)} inH2O • Temp{' '}
+                          {fmtNum(dg.meters[0].temp_f)} °F
+                        </div>
+                      ) : null}
+                    </div>
+                  </CardContent>
                 </div>
-              </div>
-            </Card>
-          )
-        })}
+
+                {/* Actions stay clickable */}
+                <div className='relative z-20 px-5 pb-5 pointer-events-auto'>
+                  <div className='flex flex-wrap gap-2'>
+                    <Link
+                      href={`/sites/${s.id}`}
+                      className='rounded-xl border border-zinc-800 px-3 py-2 text-sm font-medium hover:bg-zinc-900/40'
+                    >
+                      View
+                    </Link>
+
+                    <Link
+                      href={`/sites/${s.id}/edit`}
+                      className='rounded-xl border border-zinc-800 px-3 py-2 text-sm font-medium hover:bg-zinc-900/40'
+                    >
+                      Edit
+                    </Link>
+
+                    {directionsUrl ? (
+                      <a
+                        href={directionsUrl}
+                        target='_blank'
+                        rel='noreferrer'
+                        className='rounded-xl border border-zinc-800 px-3 py-2 text-sm font-medium hover:bg-zinc-900/40'
+                      >
+                        Directions →
+                      </a>
+                    ) : null}
+
+                    {s.currentHut ? (
+                      <Link
+                        href={`/huts/${encodeURIComponent(s.currentHut.code)}`}
+                        className='rounded-xl border border-zinc-800 px-3 py-2 text-sm font-medium hover:bg-zinc-900/40'
+                      >
+                        Open hut →
+                      </Link>
+                    ) : (
+                      <div className='px-3 py-2 text-sm text-zinc-500'>
+                        No hut mapped
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            )
+          })}
+        </div>
       </div>
     </div>
   )
