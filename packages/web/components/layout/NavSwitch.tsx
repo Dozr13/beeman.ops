@@ -10,7 +10,7 @@ export const NavSwitch = () => {
   const onSites = pathname?.startsWith('/sites') || pathname === '/'
 
   return (
-    <nav className='flex gap-4 text-sm text-zinc-300'>
+    <nav className='flex items-center gap-3 text-sm text-zinc-300 sm:gap-4'>
       {onHuts ? (
         <Link href='/sites' className='hover:text-white'>
           Sites
