@@ -21,6 +21,76 @@ type SiteCreateBody = {
 
 type SitePatchBody = Partial<SiteCreateBody>
 
+// HELPERS- MOVE THESE
+const asObj = (v: any): Record<string, any> | null =>
+  v && typeof v === 'object' && !Array.isArray(v) ? (v as any) : null
+
+type GeoValue = { lat: number; lng: number }
+type GeoParse =
+  | { ok: true; change: GeoValue | null | undefined }
+  | { ok: false; error: 'geo_invalid' | 'geo_lat_range' | 'geo_lng_range' }
+
+const parseGeoChange = (body: SiteCreateBody | SitePatchBody): GeoParse => {
+  // undefined => "no change requested"
+  // null => "clear geo"
+  // {lat,lng} => "set geo"
+
+  if ((body as any).geo !== undefined) {
+    const g = (body as any).geo
+
+    if (g === null) return { ok: true, change: null }
+
+    const obj = asObj(g)
+    if (!obj) return { ok: false, error: 'geo_invalid' }
+
+    const lat = toNumOrNull((obj as any).lat)
+    const lng = toNumOrNull((obj as any).lng)
+
+    if (lat == null || lng == null) return { ok: false, error: 'geo_invalid' }
+    if (lat < -90 || lat > 90) return { ok: false, error: 'geo_lat_range' }
+    if (lng < -180 || lng > 180) return { ok: false, error: 'geo_lng_range' }
+
+    return { ok: true, change: { lat, lng } }
+  }
+
+  // Support legacy lat/lon/lng fields too, if present
+  const hasAny =
+    (body as any).lat !== undefined ||
+    (body as any).lon !== undefined ||
+    (body as any).lng !== undefined
+
+  if (!hasAny) return { ok: true, change: undefined }
+
+  const lat = toNumOrNull((body as any).lat)
+  const lng = toNumOrNull((body as any).lng ?? (body as any).lon)
+
+  if (lat == null || lng == null) return { ok: false, error: 'geo_invalid' }
+  if (lat < -90 || lat > 90) return { ok: false, error: 'geo_lat_range' }
+  if (lng < -180 || lng > 180) return { ok: false, error: 'geo_lng_range' }
+
+  return { ok: true, change: { lat, lng } }
+}
+
+const mergeMetaGeo = (
+  baseMeta: any,
+  geoChange: { lat: number; lng: number } | null | undefined
+) => {
+  // undefined => leave meta untouched
+  // null => remove geo key
+  // object => set geo
+
+  const base = asObj(baseMeta) ? { ...(baseMeta as any) } : {}
+
+  if (geoChange === undefined) return baseMeta ?? base // keep original shape if possible
+  if (geoChange === null) {
+    delete (base as any).geo
+    return base
+  }
+
+  ;(base as any).geo = geoChange
+  return base
+}
+
 const iso = (d: Date | null | undefined) => (d ? d.toISOString() : null)
 
 const toNumOrNull = (v: any): number | null => {
@@ -102,6 +172,76 @@ const buildDailyGas = (
     },
     meters
   }
+}
+
+const buildDailyGasHistory = (
+  rows: Array<{ deviceId: string; ts: Date; payload: any }>
+) => {
+  // rows are expected newest-first
+  const byDeviceDate = new Map<
+    string,
+    { date: string; deviceId: string; payload: any }
+  >()
+
+  for (const r of rows) {
+    const p = r.payload ?? {}
+    const date =
+      typeof p.date === 'string' ? p.date : r.ts.toISOString().slice(0, 10)
+    const key = `${r.deviceId}::${date}`
+    if (byDeviceDate.has(key)) continue
+    byDeviceDate.set(key, { date, deviceId: r.deviceId, payload: p })
+  }
+
+  const byDate = new Map<
+    string,
+    {
+      date: string
+      vol_mcf: number | null
+      mmbtu: number | null
+      flow_hrs: number | null
+    }
+  >()
+
+  for (const v of byDeviceDate.values()) {
+    const cur = byDate.get(v.date) ?? {
+      date: v.date,
+      vol_mcf: 0,
+      mmbtu: 0,
+      flow_hrs: 0
+    }
+
+    const add = (key: 'vol_mcf' | 'mmbtu' | 'flow_hrs') => {
+      const n = toNumOrNull(v.payload?.[key])
+      if (n == null) return
+      ;(cur as any)[key] = ((cur as any)[key] ?? 0) + n
+    }
+
+    add('vol_mcf')
+    add('mmbtu')
+    add('flow_hrs')
+
+    byDate.set(v.date, cur)
+  }
+
+  const out = Array.from(byDate.values())
+    .map((d) => ({
+      date: d.date,
+      vol_mcf:
+        typeof d.vol_mcf === 'number' && Number.isFinite(d.vol_mcf)
+          ? d.vol_mcf
+          : null,
+      mmbtu:
+        typeof d.mmbtu === 'number' && Number.isFinite(d.mmbtu)
+          ? d.mmbtu
+          : null,
+      flow_hrs:
+        typeof d.flow_hrs === 'number' && Number.isFinite(d.flow_hrs)
+          ? d.flow_hrs
+          : null
+    }))
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0))
+
+  return out
 }
 
 export const sitesRoutes: FastifyPluginAsync = async (app) => {
@@ -386,6 +526,38 @@ export const sitesRoutes: FastifyPluginAsync = async (app) => {
     })
   })
 
+  // Daily production history for graphs (aggregated across GAS_METER devices)
+  app.get('/sites/:siteKey/production/daily', async (req, reply) => {
+    const { siteKey } = req.params as { siteKey: string }
+    const daysRaw = (req.query as any)?.days
+    const days = Math.min(365, Math.max(1, Number(daysRaw ?? 30) || 30))
+
+    const site = await app.prisma.site.findFirst({
+      where: { OR: [{ id: siteKey }, { code: siteKey }] },
+      select: { id: true }
+    })
+    if (!site) return reply.code(404).send({ error: 'site_not_found' })
+
+    const gasDevices = await app.prisma.device.findMany({
+      where: { siteId: site.id, kind: 'GAS_METER' },
+      select: { id: true }
+    })
+    const deviceIds = gasDevices.map((d) => d.id)
+    if (!deviceIds.length) return reply.send([])
+
+    const now = new Date()
+    const since = new Date(now.getTime() - days * 24 * 60 * 60 * 1000)
+
+    const rows = await app.prisma.metric.findMany({
+      where: { deviceId: { in: deviceIds }, ts: { gte: since } },
+      orderBy: { ts: 'desc' },
+      select: { deviceId: true, ts: true, payload: true }
+    })
+
+    return reply.send(buildDailyGasHistory(rows as any))
+  })
+
+  // Create site (simple; you can lock this down later)
   // Create site (simple; you can lock this down later)
   app.post('/sites', async (req, reply) => {
     const body = (req.body ?? {}) as SiteCreateBody
@@ -396,15 +568,22 @@ export const sitesRoutes: FastifyPluginAsync = async (app) => {
 
     const code = String(body.code).trim()
 
+    const geoParsed = parseGeoChange(body)
+    if (!geoParsed.ok) return reply.code(400).send({ error: geoParsed.error })
+
+    const metaOut =
+      geoParsed.change !== undefined
+        ? mergeMetaGeo(body.meta, geoParsed.change)
+        : (body.meta ?? undefined)
+
     const created = await app.prisma.site.create({
       data: {
         code,
         name: body.name ?? null,
-        // UPDATED: default to UNKNOWN if not provided
         type: (body.type as any) ?? 'UNKNOWN',
         timezone: body.timezone ?? 'America/Denver',
         hutCode: body.hutCode ?? null,
-        meta: body.meta ?? undefined,
+        meta: metaOut ?? undefined,
         ingestKey: body.ingestKey ?? null
       }
     })
@@ -413,9 +592,27 @@ export const sitesRoutes: FastifyPluginAsync = async (app) => {
   })
 
   // Patch site (edit)
+  // Patch site (edit)
   app.patch('/sites/:id', async (req, reply) => {
     const { id } = req.params as { id: string }
     const body = (req.body ?? {}) as SitePatchBody
+
+    const geoParsed = parseGeoChange(body)
+    if (!geoParsed.ok) return reply.code(400).send({ error: geoParsed.error })
+
+    // If geo is included OR meta is included, we need a base meta to merge safely
+    const wantsGeoChange = geoParsed.change !== undefined
+    const wantsMetaChange = body.meta !== undefined
+
+    let existingMeta: any = undefined
+    if (wantsGeoChange || wantsMetaChange) {
+      const existing = await app.prisma.site.findUnique({
+        where: { id },
+        select: { meta: true }
+      })
+      if (!existing) return reply.code(404).send({ error: 'site_not_found' })
+      existingMeta = existing.meta
+    }
 
     const data: any = {}
 
@@ -424,15 +621,23 @@ export const sitesRoutes: FastifyPluginAsync = async (app) => {
     if (body.type !== undefined) data.type = body.type as any
     if (body.timezone !== undefined) data.timezone = body.timezone
     if (body.hutCode !== undefined) data.hutCode = body.hutCode
-    if (body.meta !== undefined) data.meta = body.meta ?? undefined
     if (body.ingestKey !== undefined) data.ingestKey = body.ingestKey
 
-    await app.prisma.site.update({
+    // meta/geo merge logic
+    if (wantsGeoChange) {
+      const base = wantsMetaChange ? body.meta : existingMeta
+      data.meta = mergeMetaGeo(base, geoParsed.change)
+    } else if (wantsMetaChange) {
+      data.meta = body.meta ?? undefined
+    }
+
+    const updated = await app.prisma.site.update({
       where: { id },
-      data
+      data,
+      select: { id: true, code: true, meta: true }
     })
 
-    return { ok: true }
+    return { ok: true, site: updated }
   })
 
   // DELETE site (safe: will fail if FK restrict elsewhere; assignments cascade)

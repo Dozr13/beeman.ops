@@ -1,8 +1,10 @@
 'use client'
 
-import { HutDto, SiteDto } from '@ops/shared'
+import { getSiteLatLng, HutDto, SiteDto } from '@ops/shared'
 import { useParams, useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
+import { PageHeader } from '../../../../components/layout/PageHeader'
+import { PageShell } from '../../../../components/layout/PageShell'
 import {
   Card,
   CardContent,
@@ -26,6 +28,9 @@ export default function EditSitePage() {
   >('UNKNOWN')
 
   const [timezone, setTimezone] = useState('America/Denver')
+
+  const [lat, setLat] = useState('')
+  const [lon, setLon] = useState('')
 
   // assignment
   const [selectedHutId, setSelectedHutId] = useState<string>('')
@@ -56,6 +61,10 @@ export default function EditSitePage() {
       setName(siteJson.name ?? '')
       setType(siteJson.type ?? 'UNKNOWN')
       setTimezone(siteJson.timezone ?? 'America/Denver')
+
+      const geo = getSiteLatLng(siteJson as any)
+      setLat(geo?.lat != null ? String(geo.lat) : '')
+      setLon(geo?.lng != null ? String(geo.lng) : '')
 
       // current assignment from API
       setSelectedHutId(siteJson.currentHut?.id ?? '')
@@ -88,7 +97,11 @@ export default function EditSitePage() {
           code,
           name: name || null,
           type,
-          timezone
+          timezone,
+          geo:
+            lat.trim() && lon.trim()
+              ? { lat: Number(lat.trim()), lng: Number(lon.trim()) }
+              : null
         }),
         cache: 'no-store'
       })
@@ -135,24 +148,24 @@ export default function EditSitePage() {
 
   if (!site) {
     return (
-      <div className='mx-auto w-full max-w-3xl'>
+      <PageShell size='md'>
         <div className='rounded-2xl border border-zinc-900 bg-zinc-950/20 p-4 text-sm text-zinc-400'>
           Loading…
         </div>
-      </div>
+      </PageShell>
     )
   }
 
   return (
-    <div className='mx-auto w-full max-w-3xl space-y-6'>
-      <div>
-        <h1 className='text-2xl font-semibold tracking-tight'>Edit Site</h1>
-        <p className='mt-1 text-sm text-zinc-400'>
-          Update site fields and assign/move the hut.
-        </p>
-      </div>
+    <PageShell size='md'>
+      <PageHeader
+        title='Edit Site'
+        subtitle='Update site fields and assign/move the hut.'
+        backHref={`/sites/${encodeURIComponent(siteId)}`}
+        backLabel={site.code}
+      />
 
-      <Card>
+      <Card className='border-zinc-800 bg-zinc-950/20'>
         <CardHeader>
           <CardTitle>{site.code}</CardTitle>
         </CardHeader>
@@ -208,6 +221,30 @@ export default function EditSitePage() {
             </div>
           </div>
 
+          <div className='grid gap-4 md:grid-cols-2'>
+            <div className='space-y-2'>
+              <div className='text-sm text-zinc-400'>Latitude</div>
+              <input
+                value={lat}
+                onChange={(e) => setLat(e.target.value)}
+                className={inputBase}
+                placeholder='40.609484'
+                inputMode='decimal'
+              />
+            </div>
+
+            <div className='space-y-2'>
+              <div className='text-sm text-zinc-400'>Longitude</div>
+              <input
+                value={lon}
+                onChange={(e) => setLon(e.target.value)}
+                className={inputBase}
+                placeholder='-107.911308'
+                inputMode='decimal'
+              />
+            </div>
+          </div>
+
           {/* Hut assignment */}
           <div className='space-y-2'>
             <div className='text-sm text-zinc-400'>Assigned Hut</div>
@@ -259,6 +296,6 @@ export default function EditSitePage() {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </PageShell>
   )
 }

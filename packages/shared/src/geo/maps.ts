@@ -32,8 +32,17 @@ export const getSiteLatLng = (site: {
   meta?: any
 }): LatLng | null => {
   const g = site?.meta?.geo
-  if (g && Number.isFinite(g.lat) && Number.isFinite(g.lng)) {
-    return { lat: Number(g.lat), lng: Number(g.lng) }
+  if (g) {
+    const lat = Number(g.lat)
+    const lng = Number(g.lng)
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      if (lat >= -90 && lat <= 90 && lng >= 180 && lng <= 180) {
+        return { lat, lng }
+      }
+    }
   }
+  // if (g && Number.isFinite(g.lat) && Number.isFinite(g.lng)) {
+  //   return { lat: Number(g.lat), lng: Number(g.lng) }
+  // }
   return parseLatLngFromCode(site?.code)
 }
