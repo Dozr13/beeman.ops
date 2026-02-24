@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { NavSwitch } from '../components/layout/NavSwitch'
+import { ScrollToTop } from '../components/layout/ScrollToTop'
+import { TopNav } from '../components/layout/TopNav'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -16,12 +17,13 @@ export default function RootLayout({
   return (
     <html lang='en'>
       <body className='min-h-screen bg-black text-zinc-100'>
-        <header className='flex items-center justify-between border-b border-zinc-800 bg-black/60 px-4 py-4 backdrop-blur sm:px-6'>
+        <ScrollToTop />
+        <header className='sticky top-0 z-40 flex items-center justify-between border-b border-zinc-800 bg-black/70 px-4 py-4 backdrop-blur sm:px-6'>
           <Link href='/' className='text-lg font-semibold tracking-tight'>
             Beeman Ops
           </Link>
 
-          <NavSwitch />
+          <TopNav />
         </header>
 
         {/* smaller padding on mobile, same on desktop */}

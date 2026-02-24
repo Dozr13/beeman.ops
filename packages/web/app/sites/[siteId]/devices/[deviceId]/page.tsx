@@ -21,7 +21,7 @@ export default async function DevicePage({ params }: PageProps) {
   )
 
   return (
-    <div className='mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 md:px-10'>
+    <div className='mx-auto w-full max-w-5xl space-y-6'>
       <div className='flex flex-col gap-2'>
         <div className='flex flex-wrap items-center justify-between gap-3'>
           <h1 className='text-2xl font-semibold tracking-tight'>

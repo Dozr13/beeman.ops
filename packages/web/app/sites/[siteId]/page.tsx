@@ -1,5 +1,8 @@
-import { isOnline, SiteDto } from '@ops/shared'
+import { getSiteLatLng, isOnline, SiteDto } from '@ops/shared'
 import Link from 'next/link'
+import { PageHeader } from '../../../components/layout/PageHeader'
+import { PageShell } from '../../../components/layout/PageShell'
+import { SiteProductionGraph } from '../../../components/site/SiteProductionGraph'
 import {
   Card,
   CardContent,
@@ -33,25 +36,20 @@ export default async function SitePage({
 
   const ex = site.exampleData ?? null
   const dg = site.dailyGas ?? null
+  const geo = getSiteLatLng(site as any)
+
+  const directionsHref = geo
+    ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(
+        `${geo.lat},${geo.lng}`
+      )}`
+    : null
 
   return (
-    <div className='px-4 py-4 sm:px-6 sm:py-6'>
-      <div className='mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 md:px-10'>
-        <div className='flex flex-col gap-3'>
-          <div className='flex flex-wrap items-center gap-2'>
-            <h1 className='text-3xl font-semibold tracking-tight'>
-              {site.name ?? site.code}
-            </h1>
-
-            {ex ? <Pill tone='neutral'>EXAMPLE REPORT</Pill> : null}
-
-            <Pill tone={pingOnline ? 'good' : 'bad'}>
-              PING {pingOnline ? 'OK' : 'DOWN'}
-            </Pill>
-          </div>
-
-          {/* WRAP + BREAK LONG SITE CODES ON MOBILE */}
-          <div className='mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-zinc-400'>
+    <PageShell>
+      <PageHeader
+        title={site.name ?? site.code}
+        subtitle={
+          <div className='flex flex-wrap items-center gap-x-2 gap-y-1'>
             <span className='text-zinc-200 break-all sm:break-normal'>
               {site.code}
             </span>
@@ -61,19 +59,59 @@ export default async function SitePage({
             <span className='break-all sm:break-normal'>
               {site.timezone ?? 'n/a'}
             </span>
+            <span className='text-zinc-700'>•</span>
+            <span className='text-xs text-zinc-500'>
+              Last ping: {fmt(site.lastHeartbeat)}
+            </span>
           </div>
-
-          <div className='text-xs text-zinc-500'>
-            Last ping: {fmt(site.lastHeartbeat)}
+        }
+        badges={
+          <>
+            {ex ? <Pill tone='neutral'>EXAMPLE REPORT</Pill> : null}
+            <Pill tone={pingOnline ? 'good' : 'bad'}>
+              PING {pingOnline ? 'OK' : 'DOWN'}
+            </Pill>
+          </>
+        }
+        backHref='/sites'
+        backLabel='Sites'
+        actions={
+          <div className='flex flex-wrap items-center gap-2'>
+            <Link
+              href={`/sites/${encodeURIComponent(siteId)}/edit`}
+              className='rounded-xl border border-zinc-800 px-3 py-2 text-sm font-medium hover:bg-zinc-900/40'
+            >
+              Edit
+            </Link>
+            <Link
+              href={`/sites/${encodeURIComponent(siteId)}/devices`}
+              className='rounded-xl border border-zinc-800 px-3 py-2 text-sm font-medium hover:bg-zinc-900/40'
+            >
+              Devices
+            </Link>
+            {directionsHref ? (
+              <a
+                href={directionsHref}
+                target='_blank'
+                rel='noreferrer'
+                className='rounded-xl border border-zinc-800 px-3 py-2 text-sm font-medium hover:bg-zinc-900/40'
+              >
+                Directions
+              </a>
+            ) : null}
           </div>
+        }
+      />
 
-          {ex ? (
-            <div className='text-xs text-zinc-500 break-words'>
-              Example data range: {ex.rangeStart} → {ex.rangeEnd}
-              {ex.sourceFile ? ` • ${ex.sourceFile}` : ''}
-            </div>
-          ) : null}
+      {ex ? (
+        <div className='mb-4 text-xs text-zinc-500 break-words'>
+          Example data range: {ex.rangeStart} → {ex.rangeEnd}
+          {ex.sourceFile ? ` • ${ex.sourceFile}` : ''}
         </div>
+      ) : null}
+
+      <div className='space-y-4'>
+        <SiteProductionGraph siteId={siteId} />
 
         <Card className='border-zinc-800 bg-zinc-950/20'>
           <CardHeader>
@@ -196,6 +234,6 @@ export default async function SitePage({
           </CardContent>
         </Card>
       </div>
-    </div>
+    </PageShell>
   )
 }

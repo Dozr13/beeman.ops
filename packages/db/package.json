@@ -27,15 +27,15 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@prisma/adapter-pg": "^7.4.0",
-    "@prisma/client": "7.4.0",
+    "@prisma/adapter-pg": "^7.4.1",
+    "@prisma/client": "7.4.1",
     "pg": "^8.18.0",
     "recharts": "^3.7.0"
   },
   "devDependencies": {
     "@types/pg": "^8.16.0",
-    "prisma": "7.4.0",
+    "prisma": "7.4.1",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.0"
+    "typescript": "^5.9.3"
   }
 }

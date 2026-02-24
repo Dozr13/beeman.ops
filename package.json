@@ -22,7 +22,15 @@
   },
   "devDependencies": {
     "tsx": "^4.21.0",
-    "turbo": "^2.2.3",
-    "typescript": "^5.5.4"
+    "turbo": "^2.8.10",
+    "typescript": "^5.9.3"
+  },
+  "resolutions": {
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "react-is": "19.1.0",
+    "typescript": "^5.9.3",
+    "tailwindcss": "3.4.19",
+    "zod": "^3.25.76"
   }
 }

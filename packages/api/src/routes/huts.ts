@@ -323,6 +323,29 @@ export const hutsRoutes: FastifyPluginAsync = async (app) => {
     return reply.send({ ok: true, hut: created })
   })
 
+  // Update hut fields (for edit UI)
+  app.patch('/huts/:hutId', async (req, reply) => {
+    const { hutId } = req.params as { hutId: string }
+    const body = (req.body ?? {}) as { name?: string | null; meta?: any }
+
+    const existing = await app.prisma.hut.findUnique({
+      where: { id: hutId },
+      select: { id: true }
+    })
+    if (!existing) return reply.code(404).send({ error: 'hut_not_found' })
+
+    const updated = await app.prisma.hut.update({
+      where: { id: hutId },
+      data: {
+        name: body.name === undefined ? undefined : body.name,
+        meta: body.meta === undefined ? undefined : body.meta
+      },
+      select: { id: true, code: true, name: true }
+    })
+
+    return reply.send({ ok: true, hut: updated })
+  })
+
   app.post('/huts/by-code/:hutCode/assign', async (req, reply) => {
     const { hutCode } = req.params as { hutCode: string }
     const body = (req.body ?? {}) as { siteId?: string | null }
@@ -455,7 +478,6 @@ export const hutsRoutes: FastifyPluginAsync = async (app) => {
     const miners = dedupeMinersByIp(minersRaw)
     return reply.send({ miners })
   })
-
   app.delete('/huts/:hutId', async (req, reply) => {
     const { hutId } = req.params as { hutId: string }
 

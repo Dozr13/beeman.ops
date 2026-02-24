@@ -3,6 +3,8 @@
 import { getSiteLatLng, HutDto, SiteDto } from '@ops/shared'
 import { useParams, useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
+import { PageHeader } from '../../../../components/layout/PageHeader'
+import { PageShell } from '../../../../components/layout/PageShell'
 import {
   Card,
   CardContent,
@@ -146,24 +148,24 @@ export default function EditSitePage() {
 
   if (!site) {
     return (
-      <div className='mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 md:px-10'>
+      <PageShell size='md'>
         <div className='rounded-2xl border border-zinc-900 bg-zinc-950/20 p-4 text-sm text-zinc-400'>
           Loading…
         </div>
-      </div>
+      </PageShell>
     )
   }
 
   return (
-    <div className='mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 md:px-10'>
-      <div>
-        <h1 className='text-2xl font-semibold tracking-tight'>Edit Site</h1>
-        <p className='mt-1 text-sm text-zinc-400'>
-          Update site fields and assign/move the hut.
-        </p>
-      </div>
+    <PageShell size='md'>
+      <PageHeader
+        title='Edit Site'
+        subtitle='Update site fields and assign/move the hut.'
+        backHref={`/sites/${encodeURIComponent(siteId)}`}
+        backLabel={site.code}
+      />
 
-      <Card>
+      <Card className='border-zinc-800 bg-zinc-950/20'>
         <CardHeader>
           <CardTitle>{site.code}</CardTitle>
         </CardHeader>
@@ -294,6 +296,6 @@ export default function EditSitePage() {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </PageShell>
   )
 }
