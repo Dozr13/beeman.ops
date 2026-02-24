@@ -16,6 +16,7 @@ import {
   ServerCrash,
   ThermometerSun
 } from 'lucide-react'
+import Link from 'next/link'
 import React, { useCallback, useMemo, useState } from 'react'
 import { HutGraphs } from './HutGraphs'
 
@@ -238,6 +239,20 @@ export const HutDashboard: React.FC<{ siteCode: string }> = ({ siteCode }) => {
       <div className='mx-auto max-w-7xl px-4 sm:px-6 py-5 sm:py-8 space-y-6'>
         <header className='flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between'>
           <div className='space-y-1'>
+            <div className='flex flex-wrap items-center gap-3'>
+              <Link
+                href='/huts'
+                className='text-sm text-zinc-300 hover:text-white'
+              >
+                ← Huts
+              </Link>
+              <Link
+                href={`/huts/${encodeURIComponent(hutCode)}/edit`}
+                className='text-sm text-zinc-300 hover:text-white'
+              >
+                Edit
+              </Link>
+            </div>
             <h1 className='text-2xl sm:text-3xl font-bold tracking-tight'>
               Miner Hut Dashboard{' '}
               <span className='text-zinc-500'>({hutCode})</span>
