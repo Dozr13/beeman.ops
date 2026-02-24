@@ -16,7 +16,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang='en'>
-      <body className='min-h-screen bg-black text-zinc-100'>
+      <body className='min-h-dvh bg-black text-zinc-100 overflow-x-hidden'>
         <ScrollToTop />
         <header className='sticky top-0 z-40 flex items-center justify-between border-b border-zinc-800 bg-black/70 px-4 py-4 backdrop-blur sm:px-6'>
           <Link href='/' className='text-lg font-semibold tracking-tight'>
@@ -25,7 +25,6 @@ export default function RootLayout({
 
           <TopNav />
         </header>
-
         {/* smaller padding on mobile, same on desktop */}
         <main className='min-h-screen p-4 sm:p-6'>{children}</main>
       </body>

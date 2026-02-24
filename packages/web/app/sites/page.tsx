@@ -331,7 +331,7 @@ export default async function SitesPage({
                         </div>
                       </div>
 
-                      <div className='mt-3 grid grid-cols-3 gap-2'>
+                      <div className='mt-3 grid grid-cols-2 sm:grid-cols-3 gap-2'>
                         <div className='rounded-lg border border-zinc-800 bg-zinc-950/40 p-2'>
                           <div className='text-[11px] text-zinc-500'>MCF</div>
                           <div className='mt-1 text-sm font-semibold text-zinc-200'>
@@ -344,8 +344,10 @@ export default async function SitesPage({
                             {fmtNum(dg?.totals.mmbtu)}
                           </div>
                         </div>
-                        <div className='rounded-lg border border-zinc-800 bg-zinc-950/40 p-2'>
-                          <div className='text-[11px] text-zinc-500'>Flow hrs</div>
+                        <div className='rounded-lg border border-zinc-800 bg-zinc-950/40 p-2 col-span-2 sm:col-span-1'>
+                          <div className='text-[11px] text-zinc-500'>
+                            Flow hrs
+                          </div>
                           <div className='mt-1 text-sm font-semibold text-zinc-200'>
                             {fmtNum(dg?.totals.flow_hrs)}
                           </div>
@@ -353,10 +355,12 @@ export default async function SitesPage({
                       </div>
 
                       {dg?.meters?.[0] ? (
-                        <div className='mt-3 text-xs text-zinc-500'>
-                          LP {fmtNum(dg.meters[0].lp_psi)} psi • DP{' '}
-                          {fmtNum(dg.meters[0].dp_inh2o)} inH2O • Temp{' '}
-                          {fmtNum(dg.meters[0].temp_f)} °F
+                        <div className='mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-500 min-w-0'>
+                          <span>LP {fmtNum(dg.meters[0].lp_psi)} psi</span>
+                          <span className='text-zinc-700'>•</span>
+                          <span>DP {fmtNum(dg.meters[0].dp_inh2o)} inH2O</span>
+                          <span className='text-zinc-700'>•</span>
+                          <span>Temp {fmtNum(dg.meters[0].temp_f)} °F</span>
                         </div>
                       ) : null}
                     </div>
