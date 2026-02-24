@@ -7,7 +7,7 @@ export const Card = ({
 }: React.HTMLAttributes<HTMLDivElement>) => (
   <div
     className={clsx(
-      'rounded-2xl border border-zinc-800 bg-zinc-900/40 shadow-sm',
+      'min-w-0 rounded-2xl border border-zinc-800 bg-zinc-900/40 shadow-sm',
       className
     )}
     {...props}

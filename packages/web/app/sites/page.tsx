@@ -271,13 +271,14 @@ export default async function SitesPage({
 
                 {/* Content sits above overlay but does NOT steal clicks */}
                 <div className='relative z-10 pointer-events-none'>
-                  <CardHeader className='flex flex-row items-start gap-4'>
-                    <div className='min-w-full'>
-                      <div className='flex justify-between'>
-                        <CardTitle className='truncate'>
+                  <CardHeader className='flex flex-row items-start'>
+                    <div className='min-w-0 flex-1'>
+                      <div className='flex items-start justify-between gap-2'>
+                        <CardTitle className='min-w-0 truncate'>
                           {s.name ?? s.code}
                         </CardTitle>
-                        <div className='flex items-end gap-2'>
+
+                        <div className='flex shrink-0 flex-wrap items-center justify-end gap-2'>
                           <Pill tone={online ? 'good' : 'bad'}>
                             {online ? 'ONLINE' : 'OFFLINE'}
                           </Pill>
@@ -289,12 +290,13 @@ export default async function SitesPage({
                           )}
                         </div>
                       </div>
-                      <div className='mt-1 text-xs text-zinc-400'>
+
+                      <div className='mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-zinc-400'>
                         <span className='text-zinc-300'>{s.code}</span>
-                        <span className='mx-2 text-zinc-700'>•</span>
+                        <span className='text-zinc-700'>•</span>
                         <span>{s.type ?? 'UNKNOWN'}</span>
-                        <span className='mx-2 text-zinc-700'>•</span>
-                        <span>{s.timezone ?? 'n/a'}</span>
+                        <span className='text-zinc-700'>•</span>
+                        <span className='break-all'>{s.timezone ?? 'n/a'}</span>
                       </div>
                     </div>
                   </CardHeader>
