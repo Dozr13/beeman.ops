@@ -2,6 +2,8 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { ScrollToTop } from '../components/layout/ScrollToTop'
 import { TopNav } from '../components/layout/TopNav'
+import { CommandPaletteProvider } from '../components/search/CommandPaletteProvider'
+import { SearchLauncher } from '../components/search/SearchLauncher'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -17,16 +19,27 @@ export default function RootLayout({
   return (
     <html lang='en'>
       <body className='min-h-dvh bg-black text-zinc-100 overflow-x-hidden'>
-        <ScrollToTop />
-        <header className='sticky top-0 z-40 flex items-center justify-between border-b border-zinc-800 bg-black/70 px-4 py-4 backdrop-blur sm:px-6'>
-          <Link href='/' className='text-lg font-semibold tracking-tight'>
-            Beeman Ops
-          </Link>
+        <CommandPaletteProvider>
+          <ScrollToTop />
 
-          <TopNav />
-        </header>
-        {/* smaller padding on mobile, same on desktop */}
-        <main className='min-h-screen p-4 sm:p-6'>{children}</main>
+          <header className='sticky top-0 z-40 border-b border-zinc-800 bg-black/70 backdrop-blur'>
+            <div className='mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-4 sm:px-6'>
+              <Link href='/' className='text-lg font-semibold tracking-tight'>
+                Beeman Ops
+              </Link>
+              <TopNav />
+            </div>
+
+            {/* Visible search bar users can use (no keyboard required) */}
+            <div className='mx-auto w-full max-w-7xl px-4 pb-4 sm:px-6'>
+              <SearchLauncher />
+            </div>
+          </header>
+
+          <main className='px-4 pb-10 sm:px-6'>
+            <div className='mx-auto w-full max-w-7xl py-6'>{children}</div>
+          </main>
+        </CommandPaletteProvider>
       </body>
     </html>
   )

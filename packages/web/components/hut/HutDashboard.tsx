@@ -399,6 +399,7 @@ export const HutDashboard: React.FC<{ siteCode: string }> = ({ siteCode }) => {
           <StatCard
             title='Replace Count'
             subtitle='Bring spares'
+            className='col-span-2 sm:col-span-1'
             icon={<ThermometerSun className='h-5 w-5 text-zinc-500' />}
             value={computed.replace}
             subvalue={
