@@ -46,7 +46,7 @@ const resolveSite = async (
 }
 
 export const heartbeatRoutes: FastifyPluginAsync = async (app) => {
-  app.post('/v1/heartbeat', async (req, reply) => {
+  app.post('/heartbeat', async (req, reply) => {
     const parsed = HeartbeatBody.safeParse(req.body)
     if (!parsed.success) return reply.code(400).send(parsed.error.flatten())
 

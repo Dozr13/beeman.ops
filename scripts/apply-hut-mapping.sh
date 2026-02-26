@@ -16,11 +16,37 @@ if [[ ! -f "$CSV_PATH" ]]; then
   exit 1
 fi
 
-# Load env vars
-set -a
-source .env
-set +a
-: "${DATABASE_URL:?DATABASE_URL missing (check .env)}"
+# ----------------------------
+# Load DATABASE_URL safely
+# - Do NOT source .env (dotenv files are not bash scripts)
+# - Only extract DATABASE_URL line
+# ----------------------------
+if [[ -z "${DATABASE_URL:-}" ]]; then
+  if [[ ! -f .env ]]; then
+    echo "Missing .env at repo root AND DATABASE_URL not set in shell."
+    exit 1
+  fi
+
+  # Support "DATABASE_URL=..." or "export DATABASE_URL=..."
+  DATABASE_URL="$(
+    grep -E '^(export )?DATABASE_URL=' .env | head -n 1 | sed -E 's/^(export )?DATABASE_URL=//'
+  )"
+
+  # Strip optional surrounding quotes
+  DATABASE_URL="${DATABASE_URL#\"}"
+  DATABASE_URL="${DATABASE_URL%\"}"
+  DATABASE_URL="${DATABASE_URL#\'}"
+  DATABASE_URL="${DATABASE_URL%\'}"
+
+  if [[ -z "$DATABASE_URL" ]]; then
+    echo "DATABASE_URL missing (check .env)"
+    exit 1
+  fi
+
+  export DATABASE_URL
+fi
+
+: "${DATABASE_URL:?DATABASE_URL missing}"
 
 # Build a psql-compatible URL (remove Prisma schema= query param)
 PSQL_URL="$(echo "$DATABASE_URL" | sed -E 's/[?&]schema=[^&]*//; s/\?&/\?/; s/\?$//')"
@@ -78,8 +104,6 @@ psql "$PSQL_URL" -c "select ip, count(*) as n from miner_locmap_staging where hu
 
 # ----------------------------
 # 3) Apply mapping to Device.meta.loc
-#    IMPORTANT: match miner IP robustly from:
-#      DeviceStatus.payload.ip  OR Device.externalId OR Device.name OR Device.meta.ip/host
 # ----------------------------
 psql "$PSQL_URL" <<SQL
 with hut_site as (
