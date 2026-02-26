@@ -74,7 +74,7 @@ const mergeMetaPreserveLoc = (existing: unknown, incoming: unknown) => {
 }
 
 export const ingestRoutes: FastifyPluginAsync = async (app) => {
-  app.post('/v1/ingest', async (req, reply) => {
+  app.post('/ingest', async (req, reply) => {
     const parsed = IngestBatch.safeParse(req.body)
     if (!parsed.success) return reply.code(400).send(parsed.error.flatten())
 

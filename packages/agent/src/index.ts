@@ -1,12 +1,12 @@
 import { HeartbeatBody, IngestBatch, nowIso } from '@ops/shared'
 import dotenv from 'dotenv'
+import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { runCollectors } from './collectors/index.js'
 import { loadConfig, resolveConfigPath } from './config.js'
 import { postJson } from './http.js'
 import { createQueue } from './queue.js'
-import fs from 'node:fs'
 
 // ---- Robust config resolution ----
 // agent package dir = ../../ (from src/index.ts)
@@ -96,11 +96,19 @@ const apiUrl =
 // console.log('apiUrl - ', apiUrl)
 
 // SINGLE KEY SOURCE OF TRUTH:
+// Prefer OPS_INGEST_KEY_<SITE_CODE>, then OPS_INGEST_KEY fallback.
+const envKeyName = `OPS_INGEST_KEY_${siteCode
+  .toUpperCase()
+  .replace(/[^A-Z0-9]+/g, '_')}`
+
 const ingestKey =
+  asStr((process.env as any)[envKeyName]) ??
   asStr(process.env.OPS_INGEST_KEY) ??
-  asStr(cfgApi?.ingestKey) ??
   'dev-secret-change-me'
 
+console.log(
+  `using ingest key env var: ${envKeyName} (present=${Boolean((process.env as any)[envKeyName])})`
+)
 // console.log('#### INGEST KEY: ', ingestKey)
 
 const intervalSeconds = asNum((cfg as any).intervalSeconds) ?? 30

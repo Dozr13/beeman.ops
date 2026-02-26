@@ -120,7 +120,7 @@ export default function NewSitePage() {
               value={code}
               onChange={(e) => setCode(e.target.value)}
               className={inputBase}
-              placeholder='Bulldog-26'
+              placeholder='BULLDOG-26'
             />
             <div className='text-xs text-zinc-500'>
               Short, unique identifier. This is what you’ll see everywhere.

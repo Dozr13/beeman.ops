@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify'
 import { alertsRoutes } from './alerts.js'
 import { devicesRoutes } from './devices.js'
+import { heartbeatRoutes } from './heartbeat.js'
 import { hutsRoutes } from './huts.js'
 import { ingestRoutes } from './ingest.js'
 import { metricsRoutes } from './metrics.js'
@@ -13,4 +14,5 @@ export const routes: FastifyPluginAsync = async (app) => {
   await app.register(metricsRoutes)
   await app.register(alertsRoutes)
   await app.register(hutsRoutes)
+  await app.register(heartbeatRoutes)
 }
