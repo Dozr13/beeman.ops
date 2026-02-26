@@ -73,5 +73,5 @@ scripts/env-*.sh
 .env.local
 .env.*.local
 
-# data drops
-packages/ops-data/
+.env.prod
+.env.prod.keys
