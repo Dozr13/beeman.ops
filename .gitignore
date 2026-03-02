@@ -75,3 +75,11 @@ scripts/env-*.sh
 
 .env.prod
 .env.prod.keys
+
+.envrc
+
+**.bak
+
+# miner scan artifacts
+hut-scan.txt
+miners-*.ndjson
