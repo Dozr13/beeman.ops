@@ -5,67 +5,44 @@ signal.signal(signal.SIGPIPE, signal.SIG_DFL)
 import os, json, socket
 from datetime import datetime, timezone
 
-PORT_DEFAULT = 4028
+# Usage:
+#   python3 scripts/poll-whatsminers.py 192.168.1.101 192.168.1.102 ...
+# or
+#   IPS="192.168.1.101 192.168.1.102" python3 scripts/poll-whatsminers.py
 
 def now_iso():
   return datetime.now(timezone.utc).isoformat()
 
-def read_json_response(s: socket.socket, max_bytes=512_000) -> dict:
-  """
-  Read until timeout (miner usually responds once) and parse JSON.
-  We do NOT assume a single recv() contains the full JSON.
-  """
-  chunks = []
-  total = 0
-  while True:
-    try:
-      b = s.recv(4096)
-      if not b:
-        break
-      chunks.append(b)
-      total += len(b)
-      if total >= max_bytes:
-        break
-    except socket.timeout:
-      break
-
-  data = b"".join(chunks).decode(errors="ignore").strip()
-
-  # Sometimes junk may precede JSON; try to locate the first '{'
-  i = data.find("{")
-  if i > 0:
-    data = data[i:]
-
-  return json.loads(data)
-
-def q(ip: str, command="summary", port=PORT_DEFAULT, timeout_s=2.0) -> dict:
-  s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+def q(ip: str, cmd="summary", port=4028, timeout_s=2.0) -> dict:
+  s = socket.socket()
   s.settimeout(timeout_s)
   s.connect((ip, port))
-  # Whatsminer is happier with newline-terminated command.
-  s.sendall((f'{{"command":"{cmd}"}}' + "\n").encode())
-  j = read_json_response(s)
+  s.send(f'{{"command":"{cmd}"}}'.encode())
+  data = s.recv(65535)
   s.close()
-  return j
+  return json.loads(data.decode(errors="ignore"))
 
-def pick_summary(j: dict) -> tuple[str, dict, dict]:
-  """
-  Whatsminer typical:
-    STATUS: [ { STATUS: "S", Msg: "Summary" } ]
-    SUMMARY: [ { ...fields... } ]
-  """
+def pick_payload(j: dict):
+  # Error shape
+  if isinstance(j.get("STATUS"), str) and j.get("STATUS") == "E":
+    return "E", {"error": j.get("Msg") or j.get("Description") or "error"}, j
+  # Shape B: STATUS="S", Msg is object
+  if isinstance(j.get("STATUS"), str) and j.get("STATUS") == "S" and isinstance(j.get("Msg"), dict):
+    return "S", j["Msg"], j
+  # Shape A: SUMMARY array
   if isinstance(j.get("SUMMARY"), list) and j["SUMMARY"]:
     return "S", j["SUMMARY"][0], j
-  # Some firmwares return Msg as dict
-  if isinstance(j.get("Msg"), dict):
-    return "S", j["Msg"], j
-  return "E", {"error": "unknown json shape"}, j
+  return "?", {"error": "unknown json shape"}, j
 
 def to_float(x):
   try:
     return float(x)
   except Exception:
     return None
+
+def mhs_to_ghs(mhs):
+  # Whatsminer returns MH/s. 1000 MH/s = 1 GH/s.
+  return (mhs / 1000.0) if mhs is not None else None
 
 def main():
   ips = []
@@ -87,12 +64,11 @@ def main():
       "ts": ts,
       "reachable": False,
       "api_4028": False,
+
       "status": "ERR",
       "error": None,
 
-      # IMPORTANT FOR UI:
-      # We write Whatsminer MHS numbers into ghs_* keys (as JSON numbers).
-      # The web UI in this repo auto-detects large values and converts them to TH/s display.
+      # UI/API expects ghs_* numeric
       "ghs_av": None,
       "ghs_5s": None,
       "ghs_1m": None,
@@ -106,7 +82,6 @@ def main():
       "fan_out": None,
       "power_w": None,
 
-      # keep raw for debugging
       "raw": None,
     }
 
@@ -115,7 +90,7 @@ def main():
       rec["reachable"] = True
       rec["api_4028"] = True
 
-      st, p, raw = pick_summary(j)
+      st, p, raw = pick_payload(j)
       rec["raw"] = raw
 
       if st != "S":
@@ -124,14 +99,18 @@ def main():
         print(json.dumps(rec, separators=(",",":")))
         continue
 
-      rec["status"] = "OK"
+      # Whatsminer summary typically returns MH/s fields.
+      mhs_av  = to_float(p.get("MHS av"))
+      mhs_5s  = to_float(p.get("MHS 5s"))
+      mhs_1m  = to_float(p.get("MHS 1m"))
+      mhs_5m  = to_float(p.get("MHS 5m"))
+      mhs_15m = to_float(p.get("MHS 15m"))
 
-      # Whatsminer summary uses MHS fields (megahash/s)
-      rec["ghs_av"]  = to_float(p.get("MHS av"))
-      rec["ghs_5s"]  = to_float(p.get("MHS 5s"))
-      rec["ghs_1m"]  = to_float(p.get("MHS 1m"))
-      rec["ghs_5m"]  = to_float(p.get("MHS 5m"))
-      rec["ghs_15m"] = to_float(p.get("MHS 15m"))
+      rec["ghs_av"]  = mhs_to_ghs(mhs_av)
+      rec["ghs_5s"]  = mhs_to_ghs(mhs_5s)
+      rec["ghs_1m"]  = mhs_to_ghs(mhs_1m)
+      rec["ghs_5m"]  = mhs_to_ghs(mhs_5m)
+      rec["ghs_15m"] = mhs_to_ghs(mhs_15m)
 
       rec["accepted"] = p.get("Accepted")
       rec["rejected"] = p.get("Rejected")
@@ -140,7 +119,8 @@ def main():
       rec["fan_out"]  = p.get("Fan Speed Out")
       rec["power_w"]  = to_float(p.get("Power"))
 
-      # flag obvious "up but not hashing"
+      rec["status"] = "OK"
+      # Flag obvious "up but not hashing"
       if (rec["ghs_av"] == 0.0 and rec["ghs_5s"] == 0.0):
         rec["status"] = "ZERO_HASH"
 
