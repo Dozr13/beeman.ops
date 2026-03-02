@@ -27,7 +27,7 @@ const readJsonOnce = (
     socket.on('error', (e) => done(e as Error))
 
     socket.connect(port, host, () => {
-      socket.write(JSON.stringify(payload))
+      socket.write(JSON.stringify(payload) + "\n")
     })
 
     socket.on('data', (chunk) => {

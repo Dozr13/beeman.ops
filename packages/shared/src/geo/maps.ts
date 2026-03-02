@@ -36,7 +36,7 @@ export const getSiteLatLng = (site: {
     const lat = Number(g.lat)
     const lng = Number(g.lng)
     if (Number.isFinite(lat) && Number.isFinite(lng)) {
-      if (lat >= -90 && lat <= 90 && lng >= 180 && lng <= 180) {
+      if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
         return { lat, lng }
       }
     }
