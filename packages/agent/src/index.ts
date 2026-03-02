@@ -106,9 +106,6 @@ const ingestKey =
   asStr(process.env.OPS_INGEST_KEY) ??
   'dev-secret-change-me'
 
-console.log(
-  `using ingest key env var: ${envKeyName} (present=${Boolean((process.env as any)[envKeyName])})`
-)
 // console.log('#### INGEST KEY: ', ingestKey)
 
 const intervalSeconds = asNum((cfg as any).intervalSeconds) ?? 30
@@ -123,6 +120,12 @@ const log = (msg: string, extra?: any) => {
   else console.log(prefix, msg)
 }
 
+log(`apiUrl=${apiUrl}`)
+log(
+  `envKeyName=${envKeyName} present=${Boolean((process.env as any)[envKeyName])}`
+)
+log(`ingestKeyPrefix=${String(ingestKey).slice(0, 6)}`)
+
 const headers = { 'x-ops-key': ingestKey }
 
 const flushQueue = async () => {
@@ -132,8 +135,8 @@ const flushQueue = async () => {
     try {
       await postJson(apiUrl, item.path, headers, item.body)
       queue.remove(item.id)
-    } catch {
-      // WAN down; retry later
+    } catch (e) {
+      log('flushQueue post failed', String(e))
       return
     }
   }
