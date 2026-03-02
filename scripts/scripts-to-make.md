@@ -13,7 +13,7 @@ ips = [
 "192.168.1.233","192.168.1.237","192.168.1.239","192.168.1.247","192.168.1.248",
 ]
 
-def query(ip: str, cmd: str = "summary") -> str:
+def query(ip: str, command: str = "summary") -> str:
 s = socket.socket()
 s.settimeout(2)
 s.connect((ip, 4028))

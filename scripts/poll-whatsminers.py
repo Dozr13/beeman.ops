@@ -38,7 +38,7 @@ def read_json_response(s: socket.socket, max_bytes=512_000) -> dict:
 
   return json.loads(data)
 
-def q(ip: str, cmd="summary", port=PORT_DEFAULT, timeout_s=2.0) -> dict:
+def q(ip: str, command="summary", port=PORT_DEFAULT, timeout_s=2.0) -> dict:
   s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
   s.settimeout(timeout_s)
   s.connect((ip, port))

@@ -27,7 +27,7 @@ const readJsonOnce = (
     socket.on('error', (e) => done(e as Error))
 
     socket.connect(port, host, () => {
-      socket.write(JSON.stringify(payload) + "\n")
+      socket.write(JSON.stringify(payload) + '\n')
     })
 
     socket.on('data', (chunk) => {
@@ -84,7 +84,7 @@ export const collectWhatsMiner = async (
         })
 
         try {
-          const res = await readJsonOnce(host, port, { cmd: 'summary' })
+          const res = await readJsonOnce(host, port, { command: 'summary' })
           const s = res?.SUMMARY?.[0] ?? {}
 
           const mhs5s = pickNum(s, 'MHS 5s')
