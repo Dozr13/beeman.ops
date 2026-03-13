@@ -7,7 +7,7 @@ set -euo pipefail
 
 # 1) Scan for miners (port open)
 IPS="$(
-  sudo nmap -n -Pn --host-timeout 2s --max-retries 1 \
+  nmap -n -Pn --host-timeout 2s --max-retries 1 \
     --initial-rtt-timeout 200ms --max-rtt-timeout 800ms \
     -p "$PORT" --open "$SUBNET" \
   | awk '/Nmap scan report for/{print $5}' \
